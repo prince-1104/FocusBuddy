@@ -122,6 +122,9 @@ attempt has the same Java blocker. GitHub Actions now runs the same Gradle tasks
 for each push to main and pull request; see the run attached to the current commit.
 XML files parse successfully. The official
 Gradle 8.13 wrapper JAR checksum and distribution checksum were verified.
+The UI foundation and debug previews compiled in CI. The first lint run exposed
+an API-27 navigation-bar attribute in the original API-26 base theme; this redundant
+attribute was removed because runtime edge-to-edge setup owns system bar appearance.
 
 ## Compose previews
 
