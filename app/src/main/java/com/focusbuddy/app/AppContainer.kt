@@ -1,0 +1,23 @@
+package com.focusbuddy.app
+
+import android.content.Context
+import com.focusbuddy.data.local.FocusBuddyDatabase
+import com.focusbuddy.data.preferences.DataStorePreferencesRepository
+import com.focusbuddy.data.preferences.focusBuddyPreferences
+import com.focusbuddy.data.repository.*
+import com.focusbuddy.data.time.DeviceTimeZoneSource
+import com.focusbuddy.domain.repository.*
+import java.time.Clock
+
+/** Application-scoped singletons, constructor injection, no service locator inside feature code. */
+class AppContainer(context: Context) {
+    private val appContext = context.applicationContext
+    private val clock = Clock.systemUTC()
+    private val database by lazy { FocusBuddyDatabase.create(appContext) }
+    val preferences: PreferencesRepository by lazy { DataStorePreferencesRepository(appContext.focusBuddyPreferences) }
+    val tasks: TaskRepository by lazy { RoomTaskRepository(database, clock) }
+    val reminders: ReminderRepository by lazy { RoomReminderRepository(database, clock) }
+    val categories: CategoryRepository by lazy { RoomCategoryRepository(database) }
+    val focusSessions: FocusSessionRepository by lazy { RoomFocusSessionRepository(database) }
+    val calendar: CalendarRepository by lazy { RoomCalendarRepository(database, DeviceTimeZoneSource(appContext)) }
+}

@@ -31,5 +31,16 @@ jobs:
           cmdline-tools-version: '12266719'
       - name: Install Android build packages
         run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
-      - name: Compile application and debug previews, then lint
-        run: ./gradlew :app:assembleDebug :app:lintDebug --console=plain --stacktrace
+      - name: Build, run persistence unit tests, and lint
+        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --console=plain --stacktrace
+      - name: Preserve schemas and verification reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: persistence-verification
+          retention-days: 14
+          path: |
+            app/schemas/
+            app/build/test-results/testDebugUnitTest/
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/reports/lint-results-debug.*

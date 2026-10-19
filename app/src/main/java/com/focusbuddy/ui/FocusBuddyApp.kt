@@ -21,10 +21,11 @@ import java.time.LocalDate
 @Composable
 fun FocusBuddyApp(appViewModel: AppViewModel) {
     val selectedName by appViewModel.destination.collectAsStateWithLifecycle()
-    val theme by appViewModel.theme.collectAsStateWithLifecycle()
+    val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
     val destination = Destination.entries.firstOrNull { it.name == selectedName } ?: Destination.Today
     BackHandler(enabled = destination != Destination.Today) { appViewModel.select(Destination.Today) }
-    FocusBuddyContent(destination, appViewModel::select, theme, appViewModel::setTheme)
+    FocusBuddyContent(destination, appViewModel::select, uiState.theme, appViewModel::setTheme,
+        settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryPreferences)
 }
 
 /** Stateless navigation shell; previews never construct a ViewModel or read preferences. */
@@ -35,12 +36,21 @@ fun FocusBuddyContent(
     theme: ThemeMode,
     onThemeChange: (ThemeMode) -> Unit,
     todayState: TodayUiState = TodayUiState(),
+    settingsError: String? = null,
+    onRetryPreferences: () -> Unit = {},
 ) {
     val savedState = rememberSaveableStateHolder()
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(settingsError) {
+        if (settingsError != null && snackbar.showSnackbar(settingsError, "Retry") == SnackbarResult.ActionPerformed) {
+            onRetryPreferences()
+        }
+    }
     var exploreDate by rememberSaveable { mutableStateOf(LocalDate.now().toEpochDay()) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val useRail = maxWidth >= 600.dp
         Scaffold(
+            snackbarHost = { SnackbarHost(snackbar) },
             bottomBar = {
                 if (!useRail) {
                     NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow,

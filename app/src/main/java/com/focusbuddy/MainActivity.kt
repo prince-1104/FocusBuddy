@@ -14,7 +14,6 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.activity.viewModels
-import com.focusbuddy.data.preferences.ThemePreferences
 import com.focusbuddy.ui.AppViewModel
 import com.focusbuddy.ui.FocusBuddyApp
 import com.focusbuddy.ui.theme.FocusBuddyTheme
@@ -22,7 +21,7 @@ import com.focusbuddy.ui.theme.FocusBuddyTheme
 class MainActivity : ComponentActivity() {
     private val appViewModel: AppViewModel by viewModels {
         viewModelFactory {
-            initializer { AppViewModel(createSavedStateHandle(), ThemePreferences(applicationContext)) }
+            initializer { AppViewModel(createSavedStateHandle(), (application as FocusBuddyApplication).container.preferences) }
         }
     }
 
@@ -30,7 +29,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val theme by appViewModel.theme.collectAsStateWithLifecycle()
+            val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
+            val theme = uiState.theme
             val dark = theme == ThemeMode.Dark || (theme == ThemeMode.System && isSystemInDarkTheme())
             SideEffect {
                 val style = if (dark) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
