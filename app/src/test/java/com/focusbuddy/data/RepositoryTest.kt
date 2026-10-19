@@ -1,6 +1,7 @@
 package com.focusbuddy.data
 
 import android.content.Context
+import android.database.sqlite.SQLiteConstraintException
 import androidx.test.core.app.ApplicationProvider
 import com.focusbuddy.data.local.FocusBuddyDatabase
 import com.focusbuddy.data.repository.*
@@ -125,7 +126,7 @@ class RepositoryTest {
     @Test fun invalidAggregateRollsBackParentAndAlreadyInsertedChildren() = runTest {
         val record = task()
         val duplicate = reminder(record.id)
-        assertFails<Exception> { tasks.create(record, listOf(duplicate, duplicate)) }
+        assertFails<SQLiteConstraintException> { tasks.create(record, listOf(duplicate, duplicate)) }
         assertNull(tasks.get(record.id))
         assertTrue(reminders.observeAll().first().isEmpty())
         assertFails<IllegalArgumentException> { tasks.create(record, listOf(reminder(UUID.randomUUID()))) }
@@ -137,7 +138,7 @@ class RepositoryTest {
         val original = Subtask(taskId = record.id, title = "Keep this", sortOrder = 1)
         tasks.replaceSubtasks(record.id, listOf(original))
         val duplicate = Subtask(taskId = record.id, title = "Duplicate")
-        assertFails<Exception> { tasks.replaceSubtasks(record.id, listOf(duplicate, duplicate)) }
+        assertFails<SQLiteConstraintException> { tasks.replaceSubtasks(record.id, listOf(duplicate, duplicate)) }
         assertEquals(listOf(original), tasks.get(record.id)!!.subtasks)
         val first = original.copy(title = "First", sortOrder = 0)
         val last = Subtask(taskId = record.id, title = "Last", sortOrder = 5)
@@ -173,7 +174,7 @@ class RepositoryTest {
         assertEquals(category.id, tasks.get(record.id)!!.task.categoryId)
         categories.delete(category.id)
         assertNull(tasks.get(record.id)!!.task.categoryId)
-        assertFails<Exception> { tasks.create(task().copy(categoryId = UUID.randomUUID())) }
+        assertFails<SQLiteConstraintException> { tasks.create(task().copy(categoryId = UUID.randomUUID())) }
     }
 
     @Test fun focusSessionCrudSupportsStandaloneAndAssociatedRecords() = runTest {
@@ -211,6 +212,28 @@ class RepositoryTest {
         val completed = async { tasks.observe(record.id).first { it?.task?.completed == true } }
         tasks.setCompleted(record.id, true)
         assertTrue(completed.await()!!.reminders.all { !it.enabled })
+    }
+
+    @Test fun failedReminderCancellationRollsBackTaskCompletion() = runTest {
+        val record = task()
+        tasks.create(record, listOf(reminder(record.id)))
+        database.openHelper.writableDatabase.execSQL("""CREATE TRIGGER reject_disable
+            BEFORE UPDATE OF enabled ON reminders WHEN NEW.enabled = 0
+            BEGIN SELECT RAISE(ABORT, 'test cancellation failure'); END""")
+        assertFails<SQLiteConstraintException> { tasks.setCompleted(record.id, true) }
+        val details = tasks.get(record.id)!!
+        assertFalse(details.task.completed)
+        assertTrue(details.reminders.single().enabled)
+    }
+
+    @Test fun modificationTimeAdvancesAndCannotMoveBeforePreviousUpdate() = runTest {
+        val created = tasks.create(task())
+        val later = RoomTaskRepository(database, Clock.fixed(now.plusSeconds(60), ZoneOffset.UTC))
+        val updated = later.update(created.copy(title = "Later change"))
+        assertEquals(now, updated.createdAt)
+        assertEquals(now.plusSeconds(60), updated.updatedAt)
+        val afterClockCorrection = tasks.update(updated.copy(title = "Clock moved back"))
+        assertEquals(updated.updatedAt, afterClockCorrection.updatedAt)
     }
 
     @Test fun modelsRejectInvalidStandaloneAndTimeRanges() {

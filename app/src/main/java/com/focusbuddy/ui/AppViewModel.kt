@@ -33,6 +33,7 @@ class AppViewModel(
     private val mutableUiState = MutableStateFlow(AppUiState())
     val uiState: StateFlow<AppUiState> = mutableUiState.asStateFlow()
     private var preferencesJob: Job? = null
+    private var pendingTheme: ThemeMode? = null
 
     init { retryPreferences() }
 
@@ -53,10 +54,19 @@ class AppViewModel(
         viewModelScope.launch {
             try {
                 preferences.setTheme(mode)
+                pendingTheme = null
+                mutableUiState.update { it.copy(preferencesError = null) }
+                if (preferencesJob?.isActive != true) retryPreferences()
             } catch (_: IOException) {
-                mutableUiState.update { it.copy(preferencesError = "Your appearance couldn't be saved. Select it again to retry.") }
+                pendingTheme = mode
+                mutableUiState.update { it.copy(preferencesError = "Your appearance couldn't be saved. Please try again.") }
             }
         }
+    }
+
+    fun retryFailedPreference() {
+        val requested = pendingTheme
+        if (requested != null) setTheme(requested) else retryPreferences()
     }
 
     fun select(destination: Destination) {

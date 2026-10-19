@@ -25,7 +25,7 @@ fun FocusBuddyApp(appViewModel: AppViewModel) {
     val destination = Destination.entries.firstOrNull { it.name == selectedName } ?: Destination.Today
     BackHandler(enabled = destination != Destination.Today) { appViewModel.select(Destination.Today) }
     FocusBuddyContent(destination, appViewModel::select, uiState.theme, appViewModel::setTheme,
-        settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryPreferences)
+        settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryFailedPreference)
 }
 
 /** Stateless navigation shell; previews never construct a ViewModel or read preferences. */

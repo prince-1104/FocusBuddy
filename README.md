@@ -38,8 +38,12 @@ installation exists elsewhere on this machine.
 - No network or notification permissions. System cloud backup is excluded.
 - No DI framework: use constructor injection and a small application-owned
   dependency container when persistence introduces shared dependencies.
-- Room, KSP, repositories, task models, and notification components are deliberately
-  deferred to the first persistence slice; no fake or in-memory task store is shipped.
+- Room now stores tasks, reminders, categories, subtasks, and focus sessions behind
+  transactional repositories. DataStore stores mascot/appearance preferences and
+  migrates the previous theme preference. See [offline persistence](docs/persistence.md)
+  for APIs, migration policy, calendar semantics, tests, and limitations.
+- Feature screens still use honest empty scaffolds; no production samples seed the
+  database. Android notification delivery and recurrence execution remain deferred.
 
 ## Structure and boundaries
 
@@ -57,12 +61,21 @@ app/src/main/java/com/focusbuddy/
     components/                Reusable controls, cards, feedback, dates, artwork
     screens/                   Stateless scaffolds and display-only UI state
     theme/Theme.kt              Color palettes, type, shapes, theme selection
-  data/preferences/             Local theme preference (SharedPreferences)
-  domain/model/ThemeMode.kt     Android-independent appearance choice
+  FocusBuddyApplication.kt      Application-scoped dependency container owner
+  app/AppContainer.kt           Constructor injection and lazy storage singletons
+  data/local/                   Room entities, DAOs, converters, database/migration
+  data/repository/              Transactional repository implementations
+  data/preferences/             DataStore settings and legacy theme migration
+  data/time/                    Device timezone-change source
+  domain/model/                 Android-independent records and preferences
+  domain/repository/            Testable Flow/suspend repository contracts
+  domain/time/                  Zone source contract and DST-aware month boundaries
+app/schemas/                    Migration baseline and exported Room schemas
+app/src/test/                   Real SQLite/DataStore persistence and migration tests
 app/src/debug/java/com/focusbuddy/ui/preview/
   FoundationPreviews.kt         Isolated samples, screen and component previews
 app/src/main/res/               Strings, platform theme, backup rules
-.github/workflows/android.yml   Compile debug app/previews and run Android lint
+.github/workflows/android.yml   Build, persistence unit tests, lint, verification artifacts
 ```
 
 Proposed packages to add as features need them (not empty directories):
@@ -151,7 +164,12 @@ Versions are pinned stable releases, not an assertion that these are the newest:
 - [Lifecycle 2.9.4](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4)
 - [Coroutines 1.10.2](https://github.com/Kotlin/kotlinx.coroutines/releases/tag/1.10.2)
 
-Room/KSP versions will be verified together when persistence is introduced.
+- [Room 2.8.5](https://developer.android.com/jetpack/androidx/releases/room)
+- [DataStore 1.2.1](https://developer.android.com/jetpack/androidx/releases/datastore)
+- [KSP 2.2.21-2.0.5](https://github.com/google/ksp/releases/tag/2.2.21-2.0.5), matching the Kotlin compiler line
+- [Robolectric 4.16.1](https://github.com/robolectric/robolectric/releases/tag/robolectric-4.16.1)
+- [AndroidX Test Core 1.7.0](https://developer.android.com/jetpack/androidx/releases/test)
+
 Dependency downloads require a connection during setup; the application itself
 has no network requirement.
 
