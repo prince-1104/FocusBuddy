@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">FocusBuddy</string>
+    <string name="today">Today</string>
+    <string name="explore">Explore</string>
+    <string name="today_message">Make room for what matters.</string>
+    <string name="today_foundation">Your daily tasks will live here.</string>
+    <string name="explore_message">A little space to plan ahead.</string>
+    <string name="explore_foundation">Your month and selected-day agenda are coming next.</string>
+</resources>
