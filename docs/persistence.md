@@ -111,8 +111,14 @@ Run:
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --console=plain
 ```
 
-The current Windows environment lacks Java/Android tooling, so the same commands
-run on GitHub's Android-equipped runner. CI preserves generated schemas, JUnit XML,
+On Windows, `scripts/verify.ps1` runs the same checks and detects ignored portable
+JDK/SDK installations under `.tooling` when environment variables are unset. It
+sets variables for the current process only; no system configuration is changed.
+
+The original Windows environment lacked Java/Android tooling; ignored portable
+tools are being provisioned for local verification. The data-layer debug build,
+31 unit tests, and lint passed in [CI](https://github.com/prince-1104/FocusBuddy/actions/runs/39279904092).
+CI preserves generated schemas, JUnit XML,
 test reports, and lint reports as `persistence-verification` artifacts.
 
 File close/reopen tests simulate repository/process recreation; they do not replace
