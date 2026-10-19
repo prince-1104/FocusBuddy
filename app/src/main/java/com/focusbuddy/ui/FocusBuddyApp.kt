@@ -1,60 +1,91 @@
 package com.focusbuddy.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.focusbuddy.R
+import com.focusbuddy.ui.components.DestinationIcon
+import com.focusbuddy.ui.screens.*
+import com.focusbuddy.domain.model.ThemeMode
+import java.time.LocalDate
 
 @Composable
-fun FocusBuddyApp(appViewModel: AppViewModel = viewModel()) {
-    val selected by appViewModel.destination.collectAsStateWithLifecycle()
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                Destination.entries.forEach { destination ->
-                    val label = stringResource(
-                        if (destination == Destination.Today) R.string.today else R.string.explore,
-                    )
-                    NavigationBarItem(
-                        selected = selected == destination.name,
-                        onClick = { appViewModel.select(destination) },
-                        icon = { Text(label) },
-                    )
+fun FocusBuddyApp(appViewModel: AppViewModel) {
+    val selectedName by appViewModel.destination.collectAsStateWithLifecycle()
+    val theme by appViewModel.theme.collectAsStateWithLifecycle()
+    val destination = Destination.entries.firstOrNull { it.name == selectedName } ?: Destination.Today
+    BackHandler(enabled = destination != Destination.Today) { appViewModel.select(Destination.Today) }
+    FocusBuddyContent(destination, appViewModel::select, theme, appViewModel::setTheme)
+}
+
+/** Stateless navigation shell; previews never construct a ViewModel or read preferences. */
+@Composable
+fun FocusBuddyContent(
+    destination: Destination,
+    onNavigate: (Destination) -> Unit,
+    theme: ThemeMode,
+    onThemeChange: (ThemeMode) -> Unit,
+    todayState: TodayUiState = TodayUiState(),
+) {
+    val savedState = rememberSaveableStateHolder()
+    var exploreDate by rememberSaveable { mutableStateOf(LocalDate.now().toEpochDay()) }
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val useRail = maxWidth >= 600.dp
+        Scaffold(
+            bottomBar = {
+                if (!useRail) {
+                    NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+                        tonalElevation = 2.dp) {
+                        Destination.entries.forEach { item ->
+                            NavigationBarItem(
+                                selected = destination == item, onClick = { onNavigate(item) },
+                                icon = { DestinationIcon(item, Modifier.size(24.dp)) },
+                                label = { Text(item.name) },
+                            )
+                        }
+                    }
+                }
+            },
+        ) { insets ->
+            Row(Modifier.fillMaxSize().padding(insets)) {
+                if (useRail) {
+                    NavigationRail(Modifier.fillMaxHeight().verticalScroll(rememberScrollState()),
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
+                        Spacer(Modifier.height(24.dp))
+                        Destination.entries.forEach { item ->
+                            NavigationRailItem(
+                                selected = destination == item, onClick = { onNavigate(item) },
+                                icon = { DestinationIcon(item, Modifier.size(24.dp)) },
+                                label = { Text(item.name) },
+                            )
+                        }
+                    }
+                }
+                Crossfade(destination, modifier = Modifier.weight(1f).fillMaxHeight(),
+                    animationSpec = tween(160), label = "Destination") { current ->
+                    savedState.SaveableStateProvider(current.name) {
+                        when (current) {
+                            Destination.Today -> TodayScreen(todayState, { date ->
+                                exploreDate = date.toEpochDay()
+                                onNavigate(Destination.Explore)
+                            }, {})
+                            Destination.Explore -> ExploreScreen(initialDate = LocalDate.ofEpochDay(exploreDate))
+                            Destination.Focus -> FocusScreen()
+                            Destination.Mascot -> MascotScreen()
+                            Destination.Profile -> ProfileScreen(theme, onThemeChange)
+                        }
+                    }
                 }
             }
-        },
-    ) { padding ->
-        val isToday = selected == Destination.Today.name
-        Column(
-            modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge)
-            Text(
-                stringResource(if (isToday) R.string.today else R.string.explore),
-                style = MaterialTheme.typography.displaySmall,
-            )
-            Text(
-                stringResource(if (isToday) R.string.today_message else R.string.explore_message),
-                style = MaterialTheme.typography.headlineSmall,
-            )
-            Text(
-                stringResource(if (isToday) R.string.today_foundation else R.string.explore_foundation),
-                style = MaterialTheme.typography.bodyLarge,
-            )
         }
     }
 }

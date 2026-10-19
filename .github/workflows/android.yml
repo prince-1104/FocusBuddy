@@ -1,0 +1,30 @@
+name: Android build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android build packages
+        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+      - name: Compile application and debug previews, then lint
+        run: ./gradlew :app:assembleDebug :app:lintDebug --console=plain --stacktrace
