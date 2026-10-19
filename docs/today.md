@@ -30,6 +30,8 @@ No runtime task/reminder fixtures or default category records are inserted.
   selection, notes, optional same-day times, and confirmed deletion are functional.
   Existing subtasks, recurrence metadata, and the latest completion state are
   preserved when content is edited. Unsaved changes require discard confirmation.
+  Rescheduling a task preserves existing absolute reminder trigger timestamps;
+  relative reminder-offset editing is not part of this phase.
 - Validation belongs to `SaveTask`: nonblank title, ISO local date, 24-hour times,
   ordered start/end, and valid device-zone clock-change times. Nonexistent DST
   times are rejected; repeated times use the first occurrence and the editor says so.

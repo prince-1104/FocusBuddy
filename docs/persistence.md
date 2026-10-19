@@ -12,7 +12,8 @@ Domain records and repository interfaces are Android-independent. Room annotatio
 DAOs, converters, and relationships stay under `data/local`; SQL access stays behind
 the implementations under `data/repository`. Composables receive display state and
 callbacks. `AppViewModel` observes the preference repository through immutable
-`AppUiState`; feature screens remain scaffolds until the next phase.
+`AppUiState`. Today now consumes persisted agenda snapshots through its own
+screen ViewModel; the remaining feature screens are scaffolds.
 
 ## Records
 
@@ -116,7 +117,7 @@ JDK/SDK installations under `.tooling` when environment variables are unset. It
 sets variables for the current process only; no system configuration is changed.
 
 The original Windows environment lacked Java/Android tooling; ignored portable
-tools are being provisioned for local verification. The data-layer debug build,
+JDK/SDK tools now support local verification through `scripts/verify.ps1`. The data-layer debug build,
 31 unit tests, and lint passed in [CI](https://github.com/prince-1104/FocusBuddy/actions/runs/39279904092).
 CI preserves generated schemas, JUnit XML,
 test reports, and lint reports as `persistence-verification` artifacts.

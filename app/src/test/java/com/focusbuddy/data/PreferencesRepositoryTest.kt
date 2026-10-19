@@ -45,7 +45,7 @@ class PreferencesRepositoryTest {
         val repository = newRepository()
         val settings = MascotSettings(selectedMascot = "bunny", personality = MascotPersonality.Encouraging,
             supportedColors = setOf(0xFF112233, 0xFF445566), selectedColor = 0xFF445566,
-            theme = ThemeMode.Dark, animationsEnabled = false, soundEnabled = true)
+            theme = ThemeMode.Dark, animationsEnabled = false, soundEnabled = true, showMascot = false)
         repository.setSettings(settings)
         assertEquals(settings, repository.settings.first())
         scope.coroutineContext.job.cancelAndJoin()

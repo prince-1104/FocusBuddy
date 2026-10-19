@@ -53,7 +53,7 @@ class MigrationTest {
             val db = helper.writableDatabase
             db.execSQL("INSERT INTO categories(id,name,color,icon) VALUES(?,'Retained category',123,'leaf')", arrayOf(categoryId.toString()))
             db.execSQL("INSERT INTO tasks(id,title,scheduledDate,categoryId,allDay,priority,completed,createdAt,updatedAt) VALUES(?,?,?,?,1,'High',0,1000,1000)",
-                arrayOf(taskId.toString(), "Survive upgrade", date.toEpochDay(), categoryId.toString()))
+                arrayOf<Any>(taskId.toString(), "Survive upgrade", date.toEpochDay(), categoryId.toString()))
             db.execSQL("INSERT INTO reminders(id,taskId,triggerAt,enabled,soundEnabled,vibrationEnabled) VALUES(?,?,2000,1,1,0)",
                 arrayOf(reminderId.toString(), taskId.toString()))
             db.execSQL("INSERT INTO subtasks(id,taskId,title,completed,sortOrder) VALUES(?,?,?,0,0)",

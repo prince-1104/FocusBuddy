@@ -43,7 +43,7 @@ class TodayViewModelTest {
 
     @Before fun prepare() { Dispatchers.setMain(dispatcher) }
     @After fun cleanup() {
-        runBlocking { models.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() } }
+        runTest(dispatcher) { models.forEach { it.viewModelScope.coroutineContext.job.cancelAndJoin() } }
         database.close(); context.deleteDatabase(name); Dispatchers.resetMain()
     }
 
