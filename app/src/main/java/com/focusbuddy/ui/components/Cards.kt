@@ -81,7 +81,7 @@ fun CompletionControl(completed: Boolean, title: String, onChange: ((Boolean) ->
         onCheckedChange = onChange,
         enabled = onChange != null,
         modifier = modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp).semantics {
-            contentDescription = "Complete $title"
+            contentDescription = if (completed) "Mark $title incomplete" else "Complete $title"
         },
     )
 }

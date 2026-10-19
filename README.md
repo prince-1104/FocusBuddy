@@ -19,11 +19,22 @@ installation exists elsewhere on this machine.
 - One `app` module, namespace and application ID `com.focusbuddy`.
 - Minimum Android 8.0 (API 26), compile/target API 36, Java/JVM 17.
   API 26 gives native java.time support for the future calendar.
-- Today opens by default. Explore is a clearly labeled placeholder, without a
-  calendar implementation yet. Destination state uses a ViewModel, StateFlow,
-  lifecycle-aware collection, and SavedStateHandle.
-- Warm neutral / moss theme with light and dark palettes. This is the foundation,
-  not the finished mascot or product visual design.
+- Today opens by default. Today, Explore, Focus, Mascot, and Profile have screen
+  scaffolds with bottom navigation on phones and a navigation rail on wider screens.
+  Destination state uses a ViewModel, StateFlow, lifecycle-aware collection, and
+  SavedStateHandle. Screen scroll/date state survives destination changes.
+- Warm ivory, lavender, and indigo theme with restrained category colors, rounded
+  cards, scalable type, subtle elevation, and short navigation/progress animations.
+  Light, dark, and device theme modes are selectable in Profile and saved locally.
+  System bar icon contrast follows the selected appearance.
+- Explore has a custom, locale-aware full-month layout and selected-day agenda
+  placeholder. Date selection and month browsing work. Independent task and
+  reminder-alert counts are supported; unavailable counts show a dash, not zero.
+- Reusable buttons, task/reminder cards, category/priority/completion controls,
+  horizontal date selector, progress, mascot/empty states, loading/error feedback,
+  bottom sheet, and confirmation dialog live in `ui/components`.
+- Tasks, reminders, the focus timer, and mascot customization are clearly labeled
+  as coming soon. Disabled actions do not simulate completed features.
 - No network or notification permissions. System cloud backup is excluded.
 - No DI framework: use constructor injection and a small application-owned
   dependency container when persistence introduces shared dependencies.
@@ -41,10 +52,17 @@ app/src/main/AndroidManifest.xml
 app/src/main/java/com/focusbuddy/
   MainActivity.kt               Android entry point; sets Compose content
   ui/
-    AppViewModel.kt             Saved destination state
-    FocusBuddyApp.kt            Today/Explore foundation shell
-    theme/Theme.kt              Product color foundation
+    AppViewModel.kt             Navigation and appearance state
+    FocusBuddyApp.kt            Five destinations; phone bar / wider-screen rail
+    components/                Reusable controls, cards, feedback, dates, artwork
+    screens/                   Stateless scaffolds and display-only UI state
+    theme/Theme.kt              Color palettes, type, shapes, theme selection
+  data/preferences/             Local theme preference (SharedPreferences)
+  domain/model/ThemeMode.kt     Android-independent appearance choice
+app/src/debug/java/com/focusbuddy/ui/preview/
+  FoundationPreviews.kt         Isolated samples, screen and component previews
 app/src/main/res/               Strings, platform theme, backup rules
+.github/workflows/android.yml   Compile debug app/previews and run Android lint
 ```
 
 Proposed packages to add as features need them (not empty directories):
@@ -52,8 +70,7 @@ Proposed packages to add as features need them (not empty directories):
 ```text
 com.focusbuddy/
   app/                         Application-owned dependency container
-  ui/today/                    Today screen, state, ViewModel
-  ui/explore/                  Custom month grid, selected-day agenda, ViewModel
+  ui/screens/                  Add screen ViewModels with real feature state
   ui/components/               Mascot and shared product components
   ui/theme/                    Colors, typography, shapes
   domain/model/                Android-independent Task, Reminder, DaySummary
@@ -76,9 +93,8 @@ DAOs. Keep the single module until there is a concrete reason to split it.
    contracts. Add Room and compatible stable KSP, schema export, migrations, Flow
    queries, and constructor injection. Verify persistence across process restarts.
 3. Build a Today vertical slice: create/edit/complete tasks with durable storage,
-   ViewModel state, and accessible empty/error states. Develop the mascot and
-   product typography/components here.
-4. Build Explore's custom full-month grid and selected-day agenda. Every date
+   ViewModel state, and the existing task cards and empty/error components.
+4. Connect Explore's custom full-month grid and selected-day agenda. Every date
    must expose independent taskCount and reminderAlertCount values, including
    explicit zero counts. Count reminder records separately from tasks; do not
    infer reminder counts from task totals. Define timezone boundaries and count
@@ -101,8 +117,25 @@ SDK path in untracked `local.properties`. Then run:
 Initial verification: the command was run and exited 1 before Gradle started:
 `JAVA_HOME is not set and no 'java' command could be found in your PATH.`
 Consequently Kotlin compilation, dependency resolution, Android lint, and runtime
-behavior have **not** been verified. XML files parse successfully. The official
+behavior were not verified during initial setup. The UI foundation's local build
+attempt has the same Java blocker. GitHub Actions now runs the same Gradle tasks
+for each push to main and pull request; see the run attached to the current commit.
+XML files parse successfully. The official
 Gradle 8.13 wrapper JAR checksum and distribution checksum were verified.
+
+## Compose previews
+
+Open `app/src/debug/java/com/focusbuddy/ui/preview/FoundationPreviews.kt` in Android
+Studio with the debug variant selected. Previews cover all five destinations,
+light/dark appearances, 320dp large-text layouts, phone/tablet navigation, the
+component gallery, a bottom sheet, and a confirmation dialog. The task/reminder
+fixtures live only in this debug file and cannot be imported by production code.
+The production entry point supplies empty UI state; it never reads sample data.
+The gallery supports interactive completion controls; the navigation and profile
+previews also support interactive UI changes without constructing a ViewModel.
+
+Rendering previews and testing TalkBack, touch behavior, system bars, and animations
+on an emulator or physical device remain part of visual/device verification.
 
 ## Dependency provenance
 
