@@ -17,11 +17,20 @@ import androidx.activity.viewModels
 import com.focusbuddy.ui.AppViewModel
 import com.focusbuddy.ui.FocusBuddyApp
 import com.focusbuddy.ui.theme.FocusBuddyTheme
+import com.focusbuddy.ui.today.TodayViewModel
 
 class MainActivity : ComponentActivity() {
     private val appViewModel: AppViewModel by viewModels {
         viewModelFactory {
             initializer { AppViewModel(createSavedStateHandle(), (application as FocusBuddyApplication).container.preferences) }
+        }
+    }
+    private val todayViewModel: TodayViewModel by viewModels {
+        viewModelFactory {
+            initializer {
+                val container = (application as FocusBuddyApplication).container
+                TodayViewModel(appViewModel.selectedDate, container.observeDashboard, container.tasks, appViewModel::selectDate)
+            }
         }
     }
 
@@ -37,7 +46,7 @@ class MainActivity : ComponentActivity() {
                     else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
             }
-            FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel) }
+            FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel, todayViewModel) }
         }
     }
 }

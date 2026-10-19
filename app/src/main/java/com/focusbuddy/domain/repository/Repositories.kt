@@ -11,6 +11,8 @@ interface TaskRepository {
     /** Atomic aggregate creation. All supplied children must belong to the new task. */
     suspend fun create(task: Task, reminders: List<Reminder> = emptyList(), subtasks: List<Subtask> = emptyList()): Task
     suspend fun update(task: Task): Task
+    /** Edits content while preserving the latest completion state and recurrence metadata. */
+    suspend fun updateContent(id: UUID, content: TaskContent): Task
     suspend fun get(id: UUID): TaskDetails?
     fun observe(id: UUID): Flow<TaskDetails?>
     fun observeScheduled(from: LocalDate, through: LocalDate): Flow<List<Task>>
@@ -52,9 +54,15 @@ interface PreferencesRepository {
     suspend fun setTheme(mode: ThemeMode)
     /** Explicit replacement of all settings. */
     suspend fun setSettings(settings: MascotSettings)
+    suspend fun setMascotVisible(visible: Boolean)
+    suspend fun setAnimationsEnabled(enabled: Boolean)
 }
 
 interface CalendarRepository {
     /** Emits a row for every date, including zeroes; responds to device timezone changes. */
     fun observeMonth(month: YearMonth): Flow<List<DaySummary>>
+}
+
+interface AgendaRepository {
+    fun observe(selected: LocalDate, today: LocalDate, zone: java.time.ZoneId): Flow<AgendaSnapshot>
 }

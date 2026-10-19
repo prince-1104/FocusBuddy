@@ -15,11 +15,10 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 @Composable
-fun ExploreScreen(today: LocalDate = LocalDate.now(), counts: Map<LocalDate, DayCounts> = emptyMap(),
-    initialDate: LocalDate = today) {
-    var selectedEpoch by rememberSaveable(initialDate) { mutableStateOf(initialDate.toEpochDay()) }
-    var visibleMonth by rememberSaveable(initialDate) { mutableStateOf(YearMonth.from(initialDate).toString()) }
-    val selected = LocalDate.ofEpochDay(selectedEpoch)
+fun ExploreScreen(selectedDate: LocalDate, onSelectDate: (LocalDate) -> Unit, onToday: () -> Unit,
+    onOpenDay: () -> Unit, counts: Map<LocalDate, DayCounts> = emptyMap(), today: LocalDate = LocalDate.now()) {
+    var visibleMonth by rememberSaveable(selectedDate) { mutableStateOf(YearMonth.from(selectedDate).toString()) }
+    val selected = selectedDate
     val month = YearMonth.parse(visibleMonth)
     ScreenPage("Explore", "A little perspective. A little possibility.") {
         Text(month.format(DateTimeFormatter.ofPattern("MMMM uuuu")), style = MaterialTheme.typography.headlineSmall)
@@ -29,17 +28,19 @@ fun ExploreScreen(today: LocalDate = LocalDate.now(), counts: Map<LocalDate, Day
             SecondaryButton("Next", { visibleMonth = month.plusMonths(1).toString() },
                 Modifier.weight(1f).semantics { contentDescription = "Next month" })
         }
-        MonthCalendar(month, selected, counts, { selectedEpoch = it.toEpochDay() })
+        MonthCalendar(month, selected, counts, onSelectDate)
         ComingNext("T · tasks    R · reminder alerts\n— means counts are not available yet.")
         TextButton(onClick = {
             visibleMonth = YearMonth.from(today).toString()
-            selectedEpoch = today.toEpochDay()
+            onToday()
         }) { Text("Back to today") }
         SectionTitle("Your day, at a glance")
         Text(selected.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)),
             style = MaterialTheme.typography.titleMedium)
         BuddyCard {
-            EmptyState("Space for your plans", "Your selected-day agenda will appear here. Tasks and reminders are coming soon.")
+            Text("Give this day a little attention.", style = MaterialTheme.typography.titleMedium)
+            Text("Open your daily dashboard to view and edit this day's plans.", style = MaterialTheme.typography.bodyMedium)
+            PrimaryButton("Open daily agenda", onOpenDay, Modifier.fillMaxWidth())
         }
     }
 }

@@ -12,8 +12,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.time.Clock
+import java.time.LocalDate
+import java.time.ZoneId
 
 enum class Destination { Today, Explore, Focus, Mascot, Profile }
 
@@ -21,12 +27,21 @@ data class AppUiState(
     val theme: ThemeMode = ThemeMode.System,
     val preferencesLoaded: Boolean = false,
     val preferencesError: String? = null,
+    val showMascot: Boolean = true,
+    val animationsEnabled: Boolean = true,
 )
 
 class AppViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val preferences: PreferencesRepository,
+    private val clock: Clock = Clock.systemUTC(),
+    private val zone: () -> ZoneId = ZoneId::systemDefault,
 ) : ViewModel() {
+    private val initialDate = savedStateHandle.get<String>("selectedDate")?.let {
+        runCatching { LocalDate.parse(it) }.getOrNull()
+    } ?: LocalDate.now(clock.withZone(zone()))
+    val selectedDate = savedStateHandle.getStateFlow("selectedDate", initialDate.toString())
+        .map(LocalDate::parse).stateIn(viewModelScope, SharingStarted.Eagerly, initialDate)
     val destination: StateFlow<String> = savedStateHandle.getStateFlow(
         "destination", Destination.Today.name,
     )
@@ -45,7 +60,8 @@ class AppViewModel(
                 if (failure !is IOException) throw failure
                 mutableUiState.update { it.copy(preferencesError = "Your preferences couldn't be loaded. Please try again.") }
             }.collect { settings ->
-                mutableUiState.update { it.copy(theme = settings.theme, preferencesLoaded = true, preferencesError = null) }
+                mutableUiState.update { it.copy(theme = settings.theme, preferencesLoaded = true, preferencesError = null,
+                    showMascot = settings.showMascot, animationsEnabled = settings.animationsEnabled) }
             }
         }
     }
@@ -71,5 +87,17 @@ class AppViewModel(
 
     fun select(destination: Destination) {
         savedStateHandle["destination"] = destination.name
+    }
+
+    fun selectDate(date: LocalDate) { savedStateHandle["selectedDate"] = date.toString() }
+    fun selectToday() { selectDate(LocalDate.now(clock.withZone(zone()))) }
+    fun setMascotVisible(visible: Boolean) = preferenceChange { preferences.setMascotVisible(visible) }
+    fun setAnimationsEnabled(enabled: Boolean) = preferenceChange { preferences.setAnimationsEnabled(enabled) }
+    private fun preferenceChange(write: suspend () -> Unit) {
+        viewModelScope.launch {
+            try { write() } catch (_: IOException) {
+                mutableUiState.update { it.copy(preferencesError = "Your preference couldn't be saved. Please select it again.") }
+            }
+        }
     }
 }

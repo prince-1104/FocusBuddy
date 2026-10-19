@@ -18,6 +18,11 @@ interface TaskDao {
     @Query("SELECT scheduledDate, COUNT(*) AS count FROM tasks WHERE scheduledDate BETWEEN :from AND :through GROUP BY scheduledDate")
     suspend fun counts(from: LocalDate, through: LocalDate): List<TaskDateCount>
     @Query("DELETE FROM tasks WHERE id = :id") suspend fun delete(id: UUID)
+    @Transaction
+    @Query("""SELECT * FROM tasks WHERE scheduledDate = :selected
+        OR (:selected = :today AND completed = 0 AND scheduledDate < :today)
+        ORDER BY scheduledDate, startAt, createdAt, id""")
+    suspend fun agenda(selected: LocalDate, today: LocalDate): List<TaskWithRelations>
 }
 
 @Dao
@@ -51,6 +56,7 @@ interface SubtaskDao {
 
 @Dao
 interface CategoryDao {
+    @Query("SELECT * FROM categories ORDER BY name COLLATE NOCASE, id") suspend fun getAll(): List<CategoryEntity>
     @Query("SELECT * FROM categories ORDER BY name COLLATE NOCASE, id") fun observeAll(): Flow<List<CategoryEntity>>
     @Insert suspend fun insert(category: CategoryEntity)
     @Update suspend fun update(category: CategoryEntity): Int

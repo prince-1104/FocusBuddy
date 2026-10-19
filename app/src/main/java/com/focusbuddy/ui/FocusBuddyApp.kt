@@ -17,14 +17,21 @@ import com.focusbuddy.ui.components.DestinationIcon
 import com.focusbuddy.ui.screens.*
 import com.focusbuddy.domain.model.ThemeMode
 import java.time.LocalDate
+import com.focusbuddy.ui.today.TodayRoute
+import com.focusbuddy.ui.today.TodayViewModel
 
 @Composable
-fun FocusBuddyApp(appViewModel: AppViewModel) {
+fun FocusBuddyApp(appViewModel: AppViewModel, todayViewModel: TodayViewModel) {
     val selectedName by appViewModel.destination.collectAsStateWithLifecycle()
     val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
+    val selectedDate by appViewModel.selectedDate.collectAsStateWithLifecycle()
     val destination = Destination.entries.firstOrNull { it.name == selectedName } ?: Destination.Today
     BackHandler(enabled = destination != Destination.Today) { appViewModel.select(Destination.Today) }
     FocusBuddyContent(destination, appViewModel::select, uiState.theme, appViewModel::setTheme,
+        todayContent = { TodayRoute(todayViewModel, appViewModel::selectDate, appViewModel::selectToday) },
+        selectedDate = selectedDate, onSelectDate = appViewModel::selectDate, onToday = appViewModel::selectToday,
+        showMascot = uiState.showMascot, onMascotVisibilityChange = appViewModel::setMascotVisible,
+        animationsEnabled = uiState.animationsEnabled, onAnimationsChange = appViewModel::setAnimationsEnabled,
         settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryFailedPreference)
 }
 
@@ -35,7 +42,14 @@ fun FocusBuddyContent(
     onNavigate: (Destination) -> Unit,
     theme: ThemeMode,
     onThemeChange: (ThemeMode) -> Unit,
-    todayState: TodayUiState = TodayUiState(),
+    todayContent: @Composable () -> Unit,
+    selectedDate: LocalDate,
+    onSelectDate: (LocalDate) -> Unit,
+    onToday: () -> Unit,
+    showMascot: Boolean = true,
+    onMascotVisibilityChange: (Boolean) -> Unit = {},
+    animationsEnabled: Boolean = true,
+    onAnimationsChange: (Boolean) -> Unit = {},
     settingsError: String? = null,
     onRetryPreferences: () -> Unit = {},
 ) {
@@ -46,7 +60,6 @@ fun FocusBuddyContent(
             onRetryPreferences()
         }
     }
-    var exploreDate by rememberSaveable { mutableStateOf(LocalDate.now().toEpochDay()) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val useRail = maxWidth >= 600.dp
         Scaffold(
@@ -81,17 +94,16 @@ fun FocusBuddyContent(
                     }
                 }
                 Crossfade(destination, modifier = Modifier.weight(1f).fillMaxHeight(),
-                    animationSpec = tween(160), label = "Destination") { current ->
+                    animationSpec = tween(if (animationsEnabled) 160 else 0), label = "Destination") { current ->
                     savedState.SaveableStateProvider(current.name) {
                         when (current) {
-                            Destination.Today -> TodayScreen(todayState, { date ->
-                                exploreDate = date.toEpochDay()
-                                onNavigate(Destination.Explore)
-                            }, {})
-                            Destination.Explore -> ExploreScreen(initialDate = LocalDate.ofEpochDay(exploreDate))
+                            Destination.Today -> todayContent()
+                            Destination.Explore -> ExploreScreen(selectedDate = selectedDate, onSelectDate = onSelectDate,
+                                onToday = onToday, onOpenDay = { onNavigate(Destination.Today) })
                             Destination.Focus -> FocusScreen()
                             Destination.Mascot -> MascotScreen()
-                            Destination.Profile -> ProfileScreen(theme, onThemeChange)
+                            Destination.Profile -> ProfileScreen(theme, onThemeChange, showMascot, onMascotVisibilityChange,
+                                animationsEnabled, onAnimationsChange)
                         }
                     }
                 }

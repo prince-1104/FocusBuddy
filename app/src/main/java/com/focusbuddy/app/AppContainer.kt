@@ -8,6 +8,8 @@ import com.focusbuddy.data.repository.*
 import com.focusbuddy.data.time.DeviceTimeZoneSource
 import com.focusbuddy.domain.repository.*
 import java.time.Clock
+import com.focusbuddy.domain.time.SystemMomentSource
+import com.focusbuddy.domain.usecase.ObserveDashboard
 
 /** Application-scoped singletons, constructor injection, no service locator inside feature code. */
 class AppContainer(context: Context) {
@@ -20,4 +22,6 @@ class AppContainer(context: Context) {
     val categories: CategoryRepository by lazy { RoomCategoryRepository(database) }
     val focusSessions: FocusSessionRepository by lazy { RoomFocusSessionRepository(database) }
     val calendar: CalendarRepository by lazy { RoomCalendarRepository(database, DeviceTimeZoneSource(appContext)) }
+    val agenda: AgendaRepository by lazy { RoomAgendaRepository(database) }
+    val observeDashboard by lazy { ObserveDashboard(agenda, preferences, SystemMomentSource(clock, DeviceTimeZoneSource(appContext))) }
 }

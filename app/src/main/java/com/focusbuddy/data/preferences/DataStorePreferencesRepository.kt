@@ -24,6 +24,7 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
         val selectedColor = longPreferencesKey("selected_color")
         val animations = booleanPreferencesKey("animations_enabled")
         val sound = booleanPreferencesKey("mascot_sound_enabled")
+        val visible = booleanPreferencesKey("show_mascot")
     }
 
     // Read failures propagate to the caller; personal preferences are never silently erased.
@@ -39,10 +40,13 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
             theme = ThemeMode.entries.firstOrNull { it.name == preferences[Keys.theme] } ?: defaults.theme,
             animationsEnabled = preferences[Keys.animations] ?: defaults.animationsEnabled,
             soundEnabled = preferences[Keys.sound] ?: defaults.soundEnabled,
+            showMascot = preferences[Keys.visible] ?: defaults.showMascot,
         )
     }
 
     override suspend fun setTheme(mode: ThemeMode) { store.edit { it[Keys.theme] = mode.name } }
+    override suspend fun setMascotVisible(visible: Boolean) { store.edit { it[Keys.visible] = visible } }
+    override suspend fun setAnimationsEnabled(enabled: Boolean) { store.edit { it[Keys.animations] = enabled } }
 
     override suspend fun setSettings(settings: MascotSettings) {
         store.edit {
@@ -53,6 +57,7 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
             it[Keys.selectedColor] = settings.selectedColor
             it[Keys.animations] = settings.animationsEnabled
             it[Keys.sound] = settings.soundEnabled
+            it[Keys.visible] = settings.showMascot
         }
     }
 }

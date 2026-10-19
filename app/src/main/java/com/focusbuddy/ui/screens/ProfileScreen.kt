@@ -3,6 +3,7 @@ package com.focusbuddy.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -14,7 +15,9 @@ import com.focusbuddy.ui.components.*
 import com.focusbuddy.domain.model.ThemeMode
 
 @Composable
-fun ProfileScreen(theme: ThemeMode, onThemeChange: (ThemeMode) -> Unit) {
+fun ProfileScreen(theme: ThemeMode, onThemeChange: (ThemeMode) -> Unit,
+    showMascot: Boolean = true, onMascotVisibilityChange: (Boolean) -> Unit = {},
+    animationsEnabled: Boolean = true, onAnimationsChange: (Boolean) -> Unit = {}) {
     var showAbout by rememberSaveable { mutableStateOf(false) }
     var showReset by rememberSaveable { mutableStateOf(false) }
     ScreenPage("Your space", "Personal by design. Yours to make comfortable.") {
@@ -38,6 +41,11 @@ fun ProfileScreen(theme: ThemeMode, onThemeChange: (ThemeMode) -> Unit) {
             }
             TextButton(onClick = { showReset = true }, enabled = theme != ThemeMode.System) { Text("Reset appearance") }
         }
+        SectionTitle("Your companion")
+        BuddyCard {
+            PreferenceSwitch("Show companion on Today", showMascot, onMascotVisibilityChange)
+            PreferenceSwitch("Gentle animations", animationsEnabled, onAnimationsChange)
+        }
         SectionTitle("At your own pace")
         BuddyCard {
             Text("Reminders & preferences", style = MaterialTheme.typography.titleMedium)
@@ -57,5 +65,14 @@ fun ProfileScreen(theme: ThemeMode, onThemeChange: (ThemeMode) -> Unit) {
     if (showReset) {
         ConfirmationDialog("Use your device theme?", "FocusBuddy will follow your device's light or dark appearance.",
             "Use device theme", { onThemeChange(ThemeMode.System); showReset = false }, { showReset = false })
+    }
+}
+
+@Composable
+private fun PreferenceSwitch(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).toggleable(checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        Switch(checked, onCheckedChange = null)
     }
 }

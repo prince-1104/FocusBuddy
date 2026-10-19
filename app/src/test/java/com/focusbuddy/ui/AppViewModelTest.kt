@@ -15,6 +15,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.IOException
+import java.time.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -67,6 +68,18 @@ class AppViewModelTest {
         assertNull(model.uiState.value.preferencesError)
     }
 
+    @Test fun selectedDateIsSharedRestoredAndCanReturnToToday() = runTest(dispatcher) {
+        val saved = SavedStateHandle(mapOf("selectedDate" to "2026-11-05"))
+        val model = AppViewModel(saved, TestPreferences(), Clock.fixed(Instant.parse("2026-10-19T20:00:00Z"), ZoneOffset.UTC), { ZoneId.of("Asia/Kolkata") })
+            .also { viewModels += it }
+        runCurrent()
+        assertEquals(LocalDate.of(2026, 11, 5), model.selectedDate.value)
+        model.selectDate(LocalDate.of(2026, 12, 1)); runCurrent()
+        assertEquals("2026-12-01", saved.get<String>("selectedDate"))
+        model.selectToday(); runCurrent()
+        assertEquals(LocalDate.of(2026, 10, 20), model.selectedDate.value)
+    }
+
     /** Failure injection is test-only; production always uses DataStore. */
     private class TestPreferences : PreferencesRepository {
         val state = MutableStateFlow(MascotSettings())
@@ -81,5 +94,7 @@ class AppViewModelTest {
             state.value = state.value.copy(theme = mode)
         }
         override suspend fun setSettings(settings: MascotSettings) { state.value = settings }
+        override suspend fun setMascotVisible(visible: Boolean) { state.value = state.value.copy(showMascot = visible) }
+        override suspend fun setAnimationsEnabled(enabled: Boolean) { state.value = state.value.copy(animationsEnabled = enabled) }
     }
 }

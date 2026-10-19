@@ -33,8 +33,10 @@ installation exists elsewhere on this machine.
 - Reusable buttons, task/reminder cards, category/priority/completion controls,
   horizontal date selector, progress, mascot/empty states, loading/error feedback,
   bottom sheet, and confirmation dialog live in `ui/components`.
-- Tasks, reminders, the focus timer, and mascot customization are clearly labeled
-  as coming soon. Disabled actions do not simulate completed features.
+- Today is connected to Room through a screen ViewModel, with real task creation,
+  editing, completion, deletion, selected-day progress, and standalone reminders.
+  See [Today dashboard](docs/today.md) for behavior and test coverage. The focus
+  timer, reminder delivery, and mascot customization remain deferred.
 - No network or notification permissions. System cloud backup is excluded.
 - No DI framework: use constructor injection and a small application-owned
   dependency container when persistence introduces shared dependencies.
@@ -42,8 +44,9 @@ installation exists elsewhere on this machine.
   transactional repositories. DataStore stores mascot/appearance preferences and
   migrates the previous theme preference. See [offline persistence](docs/persistence.md)
   for APIs, migration policy, calendar semantics, tests, and limitations.
-- Feature screens still use honest empty scaffolds; no production samples seed the
-  database. Android notification delivery and recurrence execution remain deferred.
+- Today reads persisted records; other feature screens remain scaffolds. No
+  production samples seed the database. Android notification delivery and
+  recurrence execution remain deferred.
 
 ## Structure and boundaries
 
@@ -60,6 +63,7 @@ app/src/main/java/com/focusbuddy/
     FocusBuddyApp.kt            Five destinations; phone bar / wider-screen rail
     components/                Reusable controls, cards, feedback, dates, artwork
     screens/                   Stateless scaffolds and display-only UI state
+    today/                     Production dashboard route, ViewModel, state, editor
     theme/Theme.kt              Color palettes, type, shapes, theme selection
   FocusBuddyApplication.kt      Application-scoped dependency container owner
   app/AppContainer.kt           Constructor injection and lazy storage singletons
@@ -146,7 +150,7 @@ Studio with the debug variant selected. Previews cover all five destinations,
 light/dark appearances, 320dp large-text layouts, phone/tablet navigation, the
 component gallery, a bottom sheet, and a confirmation dialog. The task/reminder
 fixtures live only in this debug file and cannot be imported by production code.
-The production entry point supplies empty UI state; it never reads sample data.
+The production Today entry point reads Room-backed state; it never reads sample data.
 The gallery supports interactive completion controls; the navigation and profile
 previews also support interactive UI changes without constructing a ViewModel.
 

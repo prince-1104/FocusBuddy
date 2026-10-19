@@ -14,6 +14,14 @@ import com.focusbuddy.ui.components.*
 import com.focusbuddy.ui.screens.*
 import com.focusbuddy.ui.theme.*
 import com.focusbuddy.domain.model.ThemeMode
+import com.focusbuddy.domain.model.Greeting
+import com.focusbuddy.domain.model.TaskSection
+import com.focusbuddy.domain.model.DaySummary
+import com.focusbuddy.domain.model.TaskDraft
+import com.focusbuddy.ui.today.TodayUiState
+import com.focusbuddy.ui.today.TaskSectionUi
+import com.focusbuddy.ui.today.TaskEditorState
+import com.focusbuddy.ui.today.TaskEditorSheet
 import java.time.LocalDate
 
 /** Debug source set only. No application code can access these fixtures. */
@@ -25,23 +33,28 @@ private object PreviewData {
         TaskCardData("walk", "Step outside for a little while", "15 minutes · fresh air", "Wellbeing", CategoryTone.Green, Priority.Medium, true),
     )
     val reminders = listOf(ReminderCardData("Give your eyes a little break", "Today at 3:00 PM", "Wellbeing"))
-    val today = TodayUiState(tasks, reminders)
+    val today = TodayUiState(selectedDate = date, today = date, greeting = Greeting.Morning,
+        sections = listOf(TaskSectionUi(TaskSection.Anytime, tasks.take(2)), TaskSectionUi(TaskSection.Completed, tasks.takeLast(1))),
+        reminders = reminders, completed = 1, total = 3,
+        days = (-14L..14L).map { offset -> DaySummary(date.plusDays(offset), if (offset == 0L) 3 else 0, if (offset == 0L) 1 else 0) })
     val counts = mapOf(date to DayCounts(3, 1), date.plusDays(1) to DayCounts(0, 2), date.plusDays(2) to DayCounts(2, 0))
 }
+
+private val PreviewActions = TodayActions({}, {}, {}, {}, { _, _ -> }, {}, {})
 
 @Preview(name = "Today · ivory", widthDp = 390, heightDp = 900)
 @Preview(name = "Today · dark", widthDp = 390, heightDp = 900, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun TodayPreview() {
     FocusBuddyTheme {
-        Surface { TodayScreen(PreviewData.today, {}, {}, today = PreviewData.date) }
+        Surface { TodayScreen(PreviewData.today, PreviewActions) }
     }
 }
 
 @Preview(name = "Today · empty · large text", widthDp = 320, heightDp = 900, fontScale = 1.6f)
 @Composable
 private fun EmptyTodayPreview() {
-    FocusBuddyTheme { Surface { TodayScreen(TodayUiState(), {}, {}, today = PreviewData.date) } }
+    FocusBuddyTheme { Surface { TodayScreen(TodayUiState(selectedDate = PreviewData.date), PreviewActions) } }
 }
 
 @Preview(name = "Explore · separate date counts", widthDp = 390, heightDp = 1000)
@@ -49,7 +62,8 @@ private fun EmptyTodayPreview() {
     uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun ExplorePreview() {
-    FocusBuddyTheme { Surface { ExploreScreen(PreviewData.date, PreviewData.counts) } }
+    var selected by remember { mutableStateOf(PreviewData.date) }
+    FocusBuddyTheme { Surface { ExploreScreen(selected, { selected = it }, { selected = PreviewData.date }, {}, PreviewData.counts) } }
 }
 
 @Preview(name = "Focus", widthDp = 390, heightDp = 900)
@@ -74,9 +88,19 @@ private fun ProfilePreview() {
 private fun NavigationPreview() {
     var destination by remember { mutableStateOf(Destination.Today) }
     var mode by remember { mutableStateOf(ThemeMode.System) }
+    var selected by remember { mutableStateOf(PreviewData.date) }
     FocusBuddyTheme(mode) {
-        FocusBuddyContent(destination, { destination = it }, mode, { mode = it })
+        FocusBuddyContent(destination, { destination = it }, mode, { mode = it },
+            todayContent = { TodayScreen(PreviewData.today.copy(selectedDate = selected), PreviewActions.copy(selectDate = { selected = it }, goToday = { selected = PreviewData.date })) },
+            selectedDate = selected, onSelectDate = { selected = it }, onToday = { selected = PreviewData.date })
     }
+}
+
+@Preview(name = "Task creation", widthDp = 390, heightDp = 900)
+@Composable
+private fun TaskEditorPreview() {
+    var state by remember { mutableStateOf(TaskEditorState(draft = TaskDraft(title = "One meaningful step", date = PreviewData.date.toString()))) }
+    FocusBuddyTheme { TaskEditorSheet(state, emptyList(), { state = state.copy(draft = it) }, {}, {}, {}, {}) }
 }
 
 @Preview(name = "Reusable components", widthDp = 390, heightDp = 1400)

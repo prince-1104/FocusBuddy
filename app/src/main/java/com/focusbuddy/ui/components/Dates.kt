@@ -3,10 +3,14 @@ package com.focusbuddy.ui.components
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.*
@@ -23,21 +27,34 @@ data class DayCounts(val tasks: Int, val reminderAlerts: Int)
 
 @Composable
 fun HorizontalDateSelector(dates: List<LocalDate>, selected: LocalDate, onSelect: (LocalDate) -> Unit,
-    modifier: Modifier = Modifier) {
-    LazyRow(modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    modifier: Modifier = Modifier, counts: Map<LocalDate, DayCounts> = emptyMap(), animationsEnabled: Boolean = true) {
+    val target = (dates.indexOf(selected) - 2).coerceAtLeast(0)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = target)
+    LaunchedEffect(selected) {
+        if (animationsEnabled) listState.animateScrollToItem(target) else listState.scrollToItem(target)
+    }
+    LazyRow(modifier.selectableGroup(), state = listState, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(dates, key = { it.toEpochDay() }) { date ->
             val active = date == selected
+            val summary = counts[date]
             Surface(shape = MaterialTheme.shapes.medium,
                 color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer,
                 contentColor = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface) {
                 Column(Modifier.widthIn(min = 58.dp).selectable(active, role = Role.Tab, onClick = { onSelect(date) })
                     .semantics(mergeDescendants = true) {
-                        contentDescription = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL))
+                        contentDescription = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)) +
+                            (summary?.let { ", ${it.tasks} tasks, ${it.reminderAlerts} reminder alerts" } ?: "")
                     }.padding(horizontal = 12.dp, vertical = 14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(date.format(DateTimeFormatter.ofPattern("EEE")), style = MaterialTheme.typography.labelMedium)
                     Text("${date.dayOfMonth}", style = MaterialTheme.typography.titleMedium)
+                    Row(Modifier.height(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (summary != null && summary.tasks > 0) Box(Modifier.size(4.dp).background(
+                            if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary, CircleShape))
+                        if (summary != null && summary.reminderAlerts > 0) Box(Modifier.size(4.dp).background(
+                            if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.tertiary, CircleShape))
+                    }
                 }
             }
         }

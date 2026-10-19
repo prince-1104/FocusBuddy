@@ -39,6 +39,12 @@ class RoomTaskRepository(private val database: FocusBuddyDatabase, private val c
     }
 
     override suspend fun get(id: UUID): TaskDetails? = tasks.details(id)?.model()
+    override suspend fun updateContent(id: UUID, content: TaskContent): Task = database.withTransaction {
+        val current = requireNotNull(tasks.get(id)) { "Task no longer exists" }.model()
+        update(current.copy(title = content.title, description = content.description,
+            scheduledDate = content.scheduledDate, startAt = content.startAt, endAt = content.endAt,
+            allDay = content.allDay, priority = content.priority, categoryId = content.categoryId))
+    }
     override fun observe(id: UUID) = tasks.observe(id).map { it?.model() }
     override fun observeScheduled(from: LocalDate, through: LocalDate) = run {
         require(through >= from)

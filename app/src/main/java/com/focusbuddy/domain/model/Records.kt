@@ -93,6 +93,7 @@ data class MascotSettings(
     val theme: ThemeMode = ThemeMode.System,
     val animationsEnabled: Boolean = true,
     val soundEnabled: Boolean = false,
+    val showMascot: Boolean = true,
 ) {
     init {
         require(selectedMascot.isNotBlank())
