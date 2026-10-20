@@ -19,6 +19,16 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    buildTypes {
+        getByName("debug") { isDebuggable = true }
+        getByName("release") {
+            isDebuggable = false
+            // Personal release signing is supplied locally through Android Studio.
+            // Never reuse the debug key or commit signing credentials.
+            isMinifyEnabled = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

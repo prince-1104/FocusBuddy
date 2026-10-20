@@ -1,199 +1,164 @@
 # FocusBuddy
 
-Native Kotlin / Jetpack Compose personal productivity app. Version 1 is local-only:
-no account, backend, subscription, analytics, or runtime network dependency.
+A native Kotlin / Jetpack Compose personal productivity companion. Today is the
+home screen; Explore provides a custom month calendar and selected-day agenda.
+Tasks, reminders, focus history and preferences are stored locally with Room and
+DataStore. No backend, account, subscription, analytics, API key or runtime network
+connection is required. Initial Gradle dependency downloads require internet access.
 
-## Workspace inspection
+## Personal installation
 
-The workspace was empty (including hidden files) on 19 October 2026. There was no
-Gradle configuration, manifest, entry point, dependency set, source code, or Git
-repository to retain. No files were deleted or regenerated.
-
-No Java, Gradle, or ADB executable was found in PATH. JAVA_HOME and Android SDK
-environment variables were unset; no SDK or Android Studio was found in the
-common locations inspected. This is detection evidence, not proof that no custom
-installation exists elsewhere on this machine.
-
-## Foundation
-
-- One `app` module, namespace and application ID `com.focusbuddy`.
-- Minimum Android 8.0 (API 26), compile/target API 36, Java/JVM 17.
-  API 26 gives native java.time support for calendar calculations.
-- Today opens by default. Today, Explore, Focus, Mascot, and Profile have screen
-  scaffolds with bottom navigation on phones and a navigation rail on wider screens.
-  Destination state uses a ViewModel, StateFlow, lifecycle-aware collection, and
-  SavedStateHandle. Screen scroll/date state survives destination changes.
-- Warm ivory, lavender, and indigo theme with restrained category colors, rounded
-  cards, scalable type, subtle elevation, and short navigation/progress animations.
-  Light, dark, and device theme modes are selectable in Profile and saved locally.
-  System bar icon contrast follows the selected appearance.
-- Explore has a custom full-month calendar and chronological selected-day agenda,
-  backed by observable Room data and domain recurrence expansion. Each date has
-  independent task and bell-alert counts, with zero indicators hidden. Week start
-  follows the device locale or an explicit DataStore preference. Today and Explore
-  share date selection and task creation/editing. See [Explore](docs/explore.md).
-- Reusable buttons, task/reminder cards, category/priority/completion controls,
-  horizontal date selector, progress, mascot/empty states, loading/error feedback,
-  bottom sheet, and confirmation dialog live in `ui/components`.
-- Today is connected to Room through a screen ViewModel, with real task creation,
-  editing, completion, deletion, selected-day progress, and standalone reminders.
-  Task details, subtasks, recurrence, notes, multiple alerts and standalone reminder
-  editing are implemented. See [task experience](docs/task-experience.md) and
-  [Today dashboard](docs/today.md) for behavior and test coverage. The focus
-  timer now uses a durable Room checkpoint and monotonic elapsed time, with paused,
-  completed, stopped and interrupted history. Mascot Studio provides three original vector companions,
-  saved appearance/personality controls, reminder previews and contextual reactions.
-  See [Mascot Studio](docs/mascot-studio.md).
-- Local reminder delivery now uses AlarmManager, notification channels, durable
-  occurrence state, permission explanations and recovery jobs. See
-  [reminder delivery and verification limits](docs/reminders.md).
-- No network permission. Notification, exact-alarm, reboot and bounded wake-lock
-  permissions support local alerts. System cloud backup is excluded.
-- No DI framework: use constructor injection and a small application-owned
-  dependency container when persistence introduces shared dependencies.
-- Room now stores tasks, reminders, categories, subtasks, and focus sessions behind
-  transactional repositories. DataStore stores mascot/appearance preferences and
-  migrates the previous theme preference. See [offline persistence](docs/persistence.md)
-  for APIs, migration policy, calendar semantics, tests, and limitations.
-- Today, Explore and Focus read persisted records. Settings adds time formats,
-  reminder defaults and confirmed data removal; Today opens repository-backed task
-  discovery with search and filters. See [QA evidence and limits](docs/qa.md). No
-  production samples seed the database. Device notification verification remains
-  outstanding until the documented emulator/physical-device checks run.
-
-## Structure and boundaries
-
-Current files:
-
-```text
-gradle/                         Version catalog and verified Gradle wrapper
-app/build.gradle.kts            Single Android application module
-app/src/main/AndroidManifest.xml
-app/src/main/java/com/focusbuddy/
-  MainActivity.kt               Android entry point; sets Compose content
-  ui/
-    AppViewModel.kt             Navigation and appearance state
-    FocusBuddyApp.kt            Five destinations; phone bar / wider-screen rail
-    components/                Reusable controls, cards, feedback, dates, artwork
-    screens/                   Stateless scaffolds and display-only UI state
-    today/                     Production dashboard route, ViewModel, state, editor
-    theme/Theme.kt              Color palettes, type, shapes, theme selection
-  FocusBuddyApplication.kt      Application-scoped dependency container owner
-  app/AppContainer.kt           Constructor injection and lazy storage singletons
-  data/local/                   Room entities, DAOs, converters, database/migration
-  data/repository/              Transactional repository implementations
-  data/preferences/             DataStore settings and legacy theme migration
-  data/time/                    Device timezone-change source
-  data/reminders/               Durable delivery coordinator and agenda projection
-  domain/reminders/             Scheduler contracts, occurrence planning and identity
-  platform/reminders/           Native alarms, notifications, receivers and recovery jobs
-  ui/reminders/                 Permission explanations and dedicated reminder screen
-  domain/model/                 Android-independent records and preferences
-  domain/repository/            Testable Flow/suspend repository contracts
-  domain/time/                  Zone source contract and DST-aware month boundaries
-app/schemas/                    Migration baseline and exported Room schemas
-app/src/test/                   Real SQLite/DataStore persistence and migration tests
-app/src/debug/java/com/focusbuddy/ui/preview/
-  FoundationPreviews.kt         Isolated samples, screen and component previews
-app/src/main/res/               Strings, platform theme, backup rules
-.github/workflows/android.yml   Build, persistence unit tests, lint, verification artifacts
-```
-
-Proposed packages to add as features need them (not empty directories):
-
-```text
-com.focusbuddy/
-  app/                         Application-owned dependency container
-  ui/screens/                  Add screen ViewModels with real feature state
-  ui/components/               Mascot and shared product components
-  ui/theme/                    Colors, typography, shapes
-  domain/model/                Android-independent Task, Reminder, DaySummary
-  domain/repository/           Repository contracts returning Flow / suspend APIs
-  domain/usecase/              Date/count rules when reusable logic warrants them
-  data/local/                  Room entities, DAOs, database, migrations
-  data/repository/             Repository implementations and entity mapping
-  notifications/               Channels, permission coordination, scheduling, receivers
-```
-
-UI observes ViewModels; ViewModels depend on domain contracts. Repository
-implementations own Room access. Domain types must not import Compose, Room, or
-Android notification APIs. Notification handling remains outside Composables and
-DAOs. Keep the single module until there is a concrete reason to split it.
-
-## Implementation sequence
-
-1. Establish a working local build with JDK 17 and Android SDK 36.
-2. Define tasks and separate reminders, their date/time semantics, and repository
-   contracts. Add Room and compatible stable KSP, schema export, migrations, Flow
-   queries, and constructor injection. Verify persistence across process restarts.
-3. Build a Today vertical slice: create/edit/complete tasks with durable storage,
-   ViewModel state, and the existing task cards and empty/error components.
-4. Completed: connect Explore's custom full-month grid and selected-day agenda,
-   separate task/alert occurrence counts, week-start preferences, and shared dates.
-5. Add Android reminder scheduling and notifications, permission handling,
-   rescheduling after reboot/timezone changes, and reminder cancellation.
-6. Verify database migrations, month boundaries/leap years, locale/timezone
-   behavior, accessibility, and notification behavior on supported API levels.
-
-## Build
-
-Install JDK 17 and an Android SDK with `platforms;android-36`, platform tools, and
-Build Tools 35.0.0 (AGP's default). Set JAVA_HOME and ANDROID_HOME, or put the local
-SDK path in untracked `local.properties`. Then run:
+From the project root in Windows PowerShell, with JDK and SDK configured:
 
 ```powershell
-.\gradlew.bat :app:assembleDebug :app:lintDebug --console=plain
+.\gradlew.bat testDebugUnitTest
+.\gradlew.bat assembleDebug
+.\gradlew.bat installDebug
 ```
 
-Initial verification: the command was run and exited 1 before Gradle started:
-`JAVA_HOME is not set and no 'java' command could be found in your PATH.`
-Consequently Kotlin compilation, dependency resolution, Android lint, and runtime
-behavior were not verified during initial setup. The UI foundation's local build
-attempt has the same Java blocker. GitHub Actions now runs the same Gradle tasks
-for each push to main and pull request; see the run attached to the current commit.
-XML files parse successfully. The official
-Gradle 8.13 wrapper JAR checksum and distribution checksum were verified.
-The UI foundation and debug previews compiled in CI. The first lint run exposed
-an API-27 navigation-bar attribute in the original API-26 base theme; this redundant
-attribute was removed because runtime edge-to-edge setup owns system bar appearance.
+`installDebug` requires an authorized Android device or running emulator. Enable
+Developer options and USB debugging, connect by USB, accept the device's RSA
+prompt, and check `adb devices -l`. Then launch from the FocusBuddy launcher icon,
+or run `adb shell am start -W -n com.focusbuddy/.MainActivity`.
 
-## Compose previews
+The generated, debug-key-signed APK is:
+`app/build/outputs/apk/debug/app-debug.apk`. On this workspace:
+`D:\Hopper\projects\FocusBuddy\app\build\outputs\apk\debug\app-debug.apk`.
+For manual installation, copy that APK to your phone, open it and temporarily allow
+installation from that file manager when Android asks. The debug build is suitable
+for personal evaluation; it is debuggable and is not a production-signed release.
 
-Open `app/src/debug/java/com/focusbuddy/ui/preview/FoundationPreviews.kt` in Android
-Studio with the debug variant selected. Previews cover all five destinations,
-light/dark appearances, 320dp large-text layouts, phone/tablet navigation, the
-component gallery, a bottom sheet, and a confirmation dialog. The task/reminder
-fixtures live only in this debug file and cannot be imported by production code.
-The production Today entry point reads Room-backed state; it never reads sample data.
-The gallery supports interactive completion controls; the navigation and profile
-previews also support interactive UI changes without constructing a ViewModel.
+Package/namespace: **com.focusbuddy**. Display name: **FocusBuddy**.
+Version: **0.1.0**, version code **1** in `app/build.gradle.kts`.
+Debug and release share the package, so they cannot coexist. An update needs the
+same signing certificate. Do not uninstall an existing installation just to fix a
+signature mismatch: uninstalling removes local data, and v1 has no export/backup.
 
-Rendering previews and testing TalkBack, touch behavior, system bars, and animations
-on an emulator or physical device remain part of visual/device verification.
+See [installation, signing and smoke tests](docs/installation.md) before using the
+app for reminders you depend on. Device testing is still outstanding.
 
-## Dependency provenance
+## Windows development setup
 
-Versions are pinned stable releases, not an assertion that these are the newest:
+- Android 8.0 / API 26 or newer device. Compile and target SDK are API 36.
+- Android Studio Narwhal 3 Feature Drop (2025.1.3) or a newer stable version that
+  supports AGP 8.13.2. Use JDK 17 for Gradle and command-line builds; a newer IDE's
+  bundled JDK need not be the project's Gradle JDK.
+- SDK Manager: Android SDK Platform 36, Build Tools 35.0.0, Platform-Tools and
+  Command-line Tools. Optional Emulator and an API 35/36 system image for testing.
+- Gradle 8.13 comes from the checked-in wrapper; do not install a global Gradle.
+  Versions are pinned in `gradle/libs.versions.toml`; no automatic upgrades.
 
-- [AGP 8.13.2 / Gradle 8.13 / JDK 17 / supported SDK levels](https://developer.android.com/build/releases/agp-8-13-0-release-notes)
-- [Kotlin 2.2.21](https://kotlinlang.org/docs/releases.html); Compose compiler plugin matches Kotlin.
-- [Compose BOM 2025.08.00](https://android-developers.googleblog.com/2025/08/whats-new-in-jetpack-compose-august-25-release.html)
-- [Activity Compose 1.11.0](https://developer.android.com/jetpack/androidx/releases/activity#1.11.0)
-- [Lifecycle 2.9.4](https://developer.android.com/jetpack/androidx/releases/lifecycle#2.9.4)
-- [Coroutines 1.10.2](https://github.com/Kotlin/kotlinx.coroutines/releases/tag/1.10.2)
+Open the project folder in Android Studio and sync Gradle. Set the Gradle JDK to
+17 under Settings > Build, Execution, Deployment > Build Tools > Gradle. Accept
+SDK licenses. For PowerShell (replace paths with your actual installations):
 
-- [Room 2.8.5](https://developer.android.com/jetpack/androidx/releases/room)
-- [DataStore 1.2.1](https://developer.android.com/jetpack/androidx/releases/datastore)
-- [KSP 2.2.21-2.0.5](https://github.com/google/ksp/releases/tag/2.2.21-2.0.5), matching the Kotlin compiler line
-- [Robolectric 4.16.1](https://github.com/robolectric/robolectric/releases/tag/robolectric-4.16.1)
-- [AndroidX Test Core / instrumentation runner 1.7.0](https://developer.android.com/jetpack/androidx/releases/test)
+```powershell
+$env:JAVA_HOME = 'C:\path\to\jdk-17'
+$env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk"
+$env:Path = "$env:JAVA_HOME\bin;$env:ANDROID_HOME\platform-tools;$env:Path"
+.\gradlew.bat --version
+```
 
-Dependency downloads require a connection during setup; the application itself
-has no network requirement.
+Alternatively Android Studio writes the SDK path to ignored `local.properties`.
+Never commit machine-specific paths, keystores or passwords. The local
+`scripts/verify.ps1` helper uses configured tools, falling back to this workspace's
+ignored `.tooling` JDK/SDK; those tools are not distributed in Git.
 
-## Delivery workflow
+## Build and verification
 
-After each completed feature, run the relevant available checks, commit its
-changes, and push to `https://github.com/prince-1104/FocusBuddy.git`. Report any
-blocked checks explicitly; never describe an unverified build as passing. Keep
-secrets, machine-specific configuration, and generated build files out of commits.
+```powershell
+.\gradlew.bat testDebugUnitTest
+.\gradlew.bat assembleDebug
+.\gradlew.bat lintDebug
+.\gradlew.bat assembleDebugAndroidTest
+.\gradlew.bat connectedDebugAndroidTest
+.\gradlew.bat installDebug
+```
+
+Connected tasks require a device. Use `--max-workers=2` on memory-constrained
+machines. To rerun host tests even when up to date:
+`.\gradlew.bat :app:testDebugUnitTest --rerun`. To use the local tool helper:
+`.\scripts\verify.ps1 -Tasks @(':app:testDebugUnitTest', ':app:assembleDebug', ':app:lintDebug', '--max-workers=2')`.
+
+| Output | Location from repository root |
+| --- | --- |
+| Debug APK, automatically debug signed | `app/build/outputs/apk/debug/app-debug.apk` |
+| Unsigned release from `assembleRelease` | `app/build/outputs/apk/release/app-release-unsigned.apk` |
+| Instrumentation APK | `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk` |
+| Host test HTML / XML | `app/build/reports/tests/testDebugUnitTest/` / `app/build/test-results/testDebugUnitTest/` |
+| Lint / host UI renders | `app/build/reports/lint-results-debug.html` / `app/build/reports/qa/` |
+
+An unsigned release APK cannot be installed. Follow the Android Studio signing
+steps in [installation](docs/installation.md); the signed wizard output is the
+location you select, not necessarily the unsigned Gradle output above.
+
+## Permissions and reminders
+
+Allow notifications on Android 13+ when prompted. In Profile > Notification
+delivery, review notification permission, channel settings and optional exact-alarm
+access. Allow Alarms & reminders through the supported system settings flow if you
+want precise reminders. Without that access the app uses inexact scheduling;
+notification denial/channel blocking prevents visible alerts. There is no internet,
+location, contacts or external-storage permission.
+
+Alarm and action receivers are private. The exported recovery receiver handles
+boot, app replacement, date/time/time-zone and exact-access changes. The recovery
+job service is protected by `BIND_JOB_SERVICE`. `RECEIVE_BOOT_COMPLETED` and a
+bounded `WAKE_LOCK` support recovery/delivery. System backup is excluded.
+
+Doze, battery saver, vendor restrictions, force-stop, disabled channels and denied
+permissions can suppress or delay alerts. Exact delivery is not guaranteed on all
+devices. Reboot recovery requires unlocking; force-stop requires reopening the app.
+Review per-app battery settings only if needed, and test on your own phone. The
+focus timer catches up on return; it does not post a background completion alarm.
+See [reminder behavior and device checks](docs/reminders.md) for recurrence,
+late-alert, crash-window and occurrence-history limitations.
+
+## Architecture and resources
+
+One `app` module with constructor injection through `app/AppContainer.kt`.
+UI collects screen ViewModels with StateFlow and lifecycle-aware collection;
+domain rules remain separate from Room, DataStore and Android notification APIs.
+
+```text
+app/src/main/java/com/focusbuddy/
+  app/                         Dependency container
+  ui/                          Today, Explore, Focus, Mascot Studio, Profile/settings
+  ui/components/               Reusable controls and original Canvas mascot vectors
+  ui/theme/                    Ivory/lavender/indigo palettes, typography and shapes
+  domain/                      Models, repository contracts, recurrence/date/focus rules
+  data/local/                  Room schema, DAOs, migrations, durable focus state
+  data/repository/              Transactional repositories
+  data/preferences/            DataStore preferences
+  data/reminders/              Durable reminder ledger and delivery coordinator
+  platform/                    Android alarms, notifications, recovery and focus clock
+app/src/main/res/               Bundled launcher/reminder icons, strings and platform theme
+app/src/debug/                  Compose previews and isolated preview fixtures
+app/src/test/                   Domain, real Room/DataStore and host Compose UI tests
+app/src/androidTest/            Device notification and UI tests
+app/schemas/                    Versioned Room schemas and migration fixtures
+```
+
+All three original mascot variants and message templates are bundled Kotlin code;
+no asset download, Lottie/Rive file or cloud service is needed. Preview fixtures
+are debug-only and do not seed production data. In Android Studio select the debug
+variant and open `ui/preview/FoundationPreviews.kt` or `MascotPreviews.kt` under
+`app/src/debug/java/com/focusbuddy/`.
+
+## Documentation and verification limits
+
+- [Personal installation, signing, troubleshooting and manual checklist](docs/installation.md)
+- [QA evidence and remaining device checks](docs/qa.md)
+- [Offline persistence and migrations](docs/persistence.md)
+- [Today](docs/today.md), [Explore](docs/explore.md), [task editing](docs/task-experience.md)
+- [Reminder delivery](docs/reminders.md), [Mascot Studio](docs/mascot-studio.md)
+
+Host tests and native-graphics screenshots are not emulator/physical-device
+verification. Check the packaging record in the installation guide for this run's
+actual results. No cloud features were added for installation.
+
+Compatibility and signing references: [AGP 8.13 requirements](https://developer.android.com/build/releases/agp-8-13-0-release-notes),
+[Android Studio/AGP compatibility](https://developer.android.com/studio/releases#android_gradle_plugin_and_android_studio_compatibility),
+[Android app signing](https://developer.android.com/studio/publish/app-signing).
+After each completed feature, run available checks, commit and push to the
+configured FocusBuddy repository; keep generated outputs and secrets out of Git.
