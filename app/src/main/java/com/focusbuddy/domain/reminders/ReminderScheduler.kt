@@ -15,10 +15,12 @@ interface AlarmGateway {
     fun schedule(occurrence: ReminderOccurrence): String
     fun cancel(key: String)
     fun maintenance(at: Instant)
+    fun cancelMaintenance() {}
 }
 interface NotificationGateway {
     fun show(delivery: ReminderDelivery): Boolean
     fun cancel(key: String)
+    fun cancelAll() {}
 }
 interface ReminderScheduler {
     val deliveryAvailable: Boolean

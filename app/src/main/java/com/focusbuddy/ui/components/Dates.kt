@@ -67,7 +67,11 @@ fun MonthCalendar(month: YearMonth, selected: LocalDate, counts: Map<LocalDate, 
     today: LocalDate = LocalDate.now(), firstDay: java.time.DayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek) {
     val locale = Locale.getDefault()
     val cells = com.focusbuddy.domain.calendar.monthCells(month, firstDay)
-    Column(modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    BoxWithConstraints(modifier) {
+    val countCap = if (maxWidth < 350.dp && fontScale > 1.2f) 9 else 99
+    fun countLabel(value: Int) = if (value > countCap) "$countCap+" else "$value"
+    Column(Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth()) {
             repeat(7) { index ->
                 val day = firstDay.plus(index.toLong())
@@ -110,10 +114,10 @@ fun MonthCalendar(month: YearMonth, selected: LocalDate, counts: Map<LocalDate, 
                                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text("$day", style = MaterialTheme.typography.labelLarge,
                                     textDecoration = if (date == today) androidx.compose.ui.text.style.TextDecoration.Underline else null)
-                                if (summary != null && summary.tasks > 0) Text(if (summary.tasks > 99) "99+" else "${summary.tasks}", style = MaterialTheme.typography.labelSmall)
+                                if (summary != null && summary.tasks > 0) Text(countLabel(summary.tasks), style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false)
                                 if (summary != null && summary.reminderAlerts > 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    BellIcon(Modifier.size(10.dp))
-                                    Text(if (summary.reminderAlerts > 99) "99+" else "${summary.reminderAlerts}", style = MaterialTheme.typography.labelSmall)
+                                    BellIcon(Modifier.size(if (countCap == 9) 9.dp else 10.dp))
+                                    Text(countLabel(summary.reminderAlerts), style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false)
                                 }
                             }
                         }
@@ -121,6 +125,7 @@ fun MonthCalendar(month: YearMonth, selected: LocalDate, counts: Map<LocalDate, 
                 }
             }
         }
+    }
     }
 }
 

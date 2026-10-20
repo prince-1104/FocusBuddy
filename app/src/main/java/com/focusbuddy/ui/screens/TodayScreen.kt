@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -29,6 +30,7 @@ data class TodayActions(
     val dismissError: () -> Unit,
     val openExplore: () -> Unit = {},
     val addReminder: () -> Unit = {}, val editReminder: (String) -> Unit = {}, val manageReminders: () -> Unit = {},
+    val discover: () -> Unit = {},
 )
 
 @Composable
@@ -48,7 +50,7 @@ fun TodayScreen(state: TodayUiState, actions: TodayActions, moment: MascotMoment
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
-            LazyColumn(Modifier.widthIn(max = 760.dp).fillMaxWidth(),
+            LazyColumn(Modifier.widthIn(max = 760.dp).fillMaxWidth().testTag("today-agenda"),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 112.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 item("header") { TodayHeader(state, actions.goToday, moment, reactionKey) }
@@ -56,6 +58,7 @@ fun TodayScreen(state: TodayUiState, actions: TodayActions, moment: MascotMoment
                     HorizontalDateSelector(state.dateChoices, state.selectedDate, actions.selectDate,
                         counts = counts, animationsEnabled = state.animationsEnabled)
                     TextButton(actions.openExplore) { Text("Open month and agenda") }
+                    TextButton(actions.discover) { Text("Search tasks and lists") }
                     TextButton(actions.addReminder) { Text("+ Standalone reminder") }
                     TextButton(actions.manageReminders) { Text("Manage reminders") }
                 }

@@ -40,7 +40,8 @@ installation exists elsewhere on this machine.
   Task details, subtasks, recurrence, notes, multiple alerts and standalone reminder
   editing are implemented. See [task experience](docs/task-experience.md) and
   [Today dashboard](docs/today.md) for behavior and test coverage. The focus
-  timer remains deferred. Mascot Studio provides three original vector companions,
+  timer now uses a durable Room checkpoint and monotonic elapsed time, with paused,
+  completed, stopped and interrupted history. Mascot Studio provides three original vector companions,
   saved appearance/personality controls, reminder previews and contextual reactions.
   See [Mascot Studio](docs/mascot-studio.md).
 - Local reminder delivery now uses AlarmManager, notification channels, durable
@@ -54,7 +55,9 @@ installation exists elsewhere on this machine.
   transactional repositories. DataStore stores mascot/appearance preferences and
   migrates the previous theme preference. See [offline persistence](docs/persistence.md)
   for APIs, migration policy, calendar semantics, tests, and limitations.
-- Today and Explore read persisted records; Focus remains a scaffold. No
+- Today, Explore and Focus read persisted records. Settings adds time formats,
+  reminder defaults and confirmed data removal; Today opens repository-backed task
+  discovery with search and filters. See [QA evidence and limits](docs/qa.md). No
   production samples seed the database. Device notification verification remains
   outstanding until the documented emulator/physical-device checks run.
 

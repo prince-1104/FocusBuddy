@@ -101,7 +101,7 @@ class ReminderActivity : ComponentActivity() {
                     else -> {
                         Text(state.reminder!!.title ?: state.task?.title.orEmpty(), style = MaterialTheme.typography.headlineSmall)
                         state.task?.let { Text("For your task: ${it.title}") }
-                        state.at?.let { Text(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault()).format(it), color = MaterialTheme.colorScheme.primary) }
+                        state.at?.let { Text(com.focusbuddy.domain.time.dateTimeFormatter(settings.timeFormat).withZone(ZoneId.systemDefault()).format(it), color = MaterialTheme.colorScheme.primary) }
                         Text("Status: ${state.status}")
                         (state.reminder!!.description ?: state.task?.description)?.let { Text(it) }
                         val active = state.status in setOf("Delivered", "Dismissed") && state.reminder!!.enabled && state.task?.completed != true

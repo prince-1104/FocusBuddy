@@ -24,7 +24,7 @@ data class ExploreState(
     val alerts get() = snapshot?.alerts.orEmpty().filter { it.trigger.atZone(snapshot!!.zone).toLocalDate() == selected }
     val completed get() = tasks.count { it.task.completed }
 }
-fun AlertOccurrence.key() = "${reminder.id}:$trigger"
+fun AlertOccurrence.key() = identity
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExploreViewModel(

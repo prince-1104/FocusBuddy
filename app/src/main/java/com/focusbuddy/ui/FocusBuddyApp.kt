@@ -11,6 +11,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.focusbuddy.ui.components.DestinationIcon
 import com.focusbuddy.ui.screens.*
@@ -20,21 +22,37 @@ import com.focusbuddy.ui.today.TodayViewModel
 
 @Composable
 fun FocusBuddyApp(appViewModel: AppViewModel, todayViewModel: TodayViewModel, exploreViewModel: com.focusbuddy.ui.explore.ExploreViewModel,
-    mascotViewModel: com.focusbuddy.ui.mascot.MascotStudioViewModel) {
+    mascotViewModel: com.focusbuddy.ui.mascot.MascotStudioViewModel,
+    focusViewModel: com.focusbuddy.ui.focus.FocusViewModel,
+    settingsViewModel: com.focusbuddy.ui.settings.SettingsViewModel,
+    discoveryViewModel: com.focusbuddy.ui.discovery.TaskDiscoveryViewModel,
+    beforeClear: () -> Unit, afterClear: () -> Unit) {
     val selectedName by appViewModel.destination.collectAsStateWithLifecycle()
     val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
     val destination = Destination.entries.firstOrNull { it.name == selectedName } ?: Destination.Today
+    var discoveryOpen by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
+    val settingsBusy by settingsViewModel.busy.collectAsStateWithLifecycle()
+    val navigate: (Destination) -> Unit = { if (!settingsBusy) appViewModel.select(it) }
+    BackHandler(discoveryOpen && destination == Destination.Today) { discoveryOpen = false }
     BackHandler(enabled = destination != Destination.Today) { appViewModel.select(Destination.Today) }
+    BackHandler(enabled = settingsBusy) { /* Finish the in-flight settings/reset operation before navigating. */ }
     CompositionLocalProvider(com.focusbuddy.ui.components.LocalMascotSettings provides uiState.mascot) {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
     Column(Modifier.statusBarsPadding()) {
-    com.focusbuddy.ui.reminders.ReminderSettingsEntry()
-    Box(Modifier.weight(1f)) { FocusBuddyContent(destination, appViewModel::select, uiState.theme, appViewModel::setTheme,
-        todayContent = { TodayRoute(todayViewModel, appViewModel::selectDate, appViewModel::selectToday, { appViewModel.select(Destination.Explore) }) },
+    Box(Modifier.weight(1f)) { FocusBuddyContent(destination, navigate, uiState.theme, appViewModel::setTheme,
+        todayContent = {
+            if (discoveryOpen) com.focusbuddy.ui.discovery.TaskDiscoveryRoute(discoveryViewModel, { discoveryOpen = false },
+                { discoveryOpen = false; todayViewModel.openTask(it) }, { discoveryOpen = false; todayViewModel.createTask() })
+            else TodayRoute(todayViewModel, appViewModel::selectDate, appViewModel::selectToday, { appViewModel.select(Destination.Explore) }, { discoveryOpen = true })
+        },
         exploreContent = { com.focusbuddy.ui.explore.ExploreRoute(exploreViewModel, todayViewModel, appViewModel::selectDate, appViewModel::selectToday) },
         mascotContent = { com.focusbuddy.ui.mascot.MascotStudioRoute(mascotViewModel) },
+        focusContent = { com.focusbuddy.ui.focus.FocusRoute(focusViewModel) },
+        profileContent = { com.focusbuddy.ui.settings.SettingsRoute(settingsViewModel, { navigate(Destination.Mascot) }, beforeClear, afterClear) },
         showMascot = uiState.showMascot, onMascotVisibilityChange = appViewModel::setMascotVisible,
         animationsEnabled = uiState.animationsEnabled, onAnimationsChange = appViewModel::setAnimationsEnabled,
         settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryFailedPreference) }
+    }
     }
     }
 }
@@ -49,6 +67,8 @@ fun FocusBuddyContent(
     todayContent: @Composable () -> Unit,
     exploreContent: @Composable () -> Unit,
     mascotContent: @Composable () -> Unit = { MascotScreen() },
+    focusContent: @Composable () -> Unit = { FocusScreen() },
+    profileContent: (@Composable () -> Unit)? = null,
     showMascot: Boolean = true,
     onMascotVisibilityChange: (Boolean) -> Unit = {},
     animationsEnabled: Boolean = true,
@@ -75,7 +95,7 @@ fun FocusBuddyContent(
                             NavigationBarItem(
                                 selected = destination == item, onClick = { onNavigate(item) },
                                 icon = { DestinationIcon(item, Modifier.size(24.dp)) },
-                                label = { Text(item.name) },
+                                label = { Text(item.name, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             )
                         }
                     }
@@ -91,7 +111,7 @@ fun FocusBuddyContent(
                             NavigationRailItem(
                                 selected = destination == item, onClick = { onNavigate(item) },
                                 icon = { DestinationIcon(item, Modifier.size(24.dp)) },
-                                label = { Text(item.name) },
+                                label = { Text(item.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             )
                         }
                     }
@@ -102,9 +122,9 @@ fun FocusBuddyContent(
                         when (current) {
                             Destination.Today -> todayContent()
                             Destination.Explore -> exploreContent()
-                            Destination.Focus -> FocusScreen()
+                            Destination.Focus -> focusContent()
                             Destination.Mascot -> mascotContent()
-                            Destination.Profile -> ProfileScreen(theme, onThemeChange, showMascot, onMascotVisibilityChange,
+                            Destination.Profile -> if (profileContent != null) profileContent() else ProfileScreen(theme, onThemeChange, showMascot, onMascotVisibilityChange,
                                 animationsEnabled, onAnimationsChange)
                         }
                     }

@@ -5,6 +5,7 @@ import java.time.LocalDate
 data class AgendaSnapshot(
     val tasks: List<TaskDetails>, val standaloneReminders: List<Reminder>,
     val categories: List<Category>, val days: List<DaySummary>,
+    val standaloneAlerts: List<com.focusbuddy.domain.calendar.AlertOccurrence> = standaloneReminders.map { com.focusbuddy.domain.calendar.AlertOccurrence(it, it.effectiveTriggerAt, null) },
 )
 
 enum class TaskSection { Overdue, Upcoming, LaterToday, Anytime, Completed }
@@ -16,6 +17,7 @@ data class Dashboard(
     val groups: List<TaskGroup>, val standaloneReminders: List<Reminder>,
     val completed: Int, val total: Int, val categories: List<Category>, val days: List<DaySummary>,
     val settings: MascotSettings, val zone: java.time.ZoneId,
+    val standaloneAlerts: List<com.focusbuddy.domain.calendar.AlertOccurrence> = standaloneReminders.map { com.focusbuddy.domain.calendar.AlertOccurrence(it, it.effectiveTriggerAt, null) },
 )
 
 data class TaskContent(

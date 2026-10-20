@@ -14,11 +14,11 @@ import kotlinx.coroutines.flow.collectLatest
 import com.focusbuddy.domain.mascot.MascotMoment
 
 @Composable
-fun TodayRoute(viewModel: TodayViewModel, onSelectDate: (LocalDate) -> Unit, onToday: () -> Unit, onExplore: () -> Unit = {}) {
+fun TodayRoute(viewModel: TodayViewModel, onSelectDate: (LocalDate) -> Unit, onToday: () -> Unit, onExplore: () -> Unit = {}, onDiscover: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val actions = remember(viewModel, onSelectDate, onToday, onExplore) {
+    val actions = remember(viewModel, onSelectDate, onToday, onExplore, onDiscover) {
         TodayActions(onSelectDate, onToday, viewModel::createTask, viewModel::openTask,
-            viewModel::completeTask, viewModel::retry, viewModel::dismissActionError, onExplore, viewModel::createReminder, viewModel::editReminder, viewModel::openReminderLibrary)
+            viewModel::completeTask, viewModel::retry, viewModel::dismissActionError, onExplore, viewModel::createReminder, viewModel::editReminder, viewModel::openReminderLibrary, onDiscover)
     }
     val settings = com.focusbuddy.ui.components.LocalMascotSettings.current
     val latestSettings by rememberUpdatedState(settings)
@@ -53,7 +53,7 @@ fun TaskEditorHost(viewModel: TodayViewModel, editorState: TaskEditorState?, cat
                 library.reminders.forEach { record ->
                     com.focusbuddy.ui.components.BuddyCard(onClick = { viewModel.closeReminderLibrary(); viewModel.editReminder(record.id.toString()) }) {
                         androidx.compose.material3.Text(record.title.orEmpty(), style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-                        androidx.compose.material3.Text(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.MEDIUM).withZone(java.time.ZoneId.systemDefault()).format(record.effectiveTriggerAt))
+                        androidx.compose.material3.Text(com.focusbuddy.domain.time.dateTimeFormatter(com.focusbuddy.ui.components.LocalMascotSettings.current.timeFormat).withZone(java.time.ZoneId.systemDefault()).format(record.effectiveTriggerAt))
                         androidx.compose.material3.Text(if (record.enabled) "Enabled" else "Disabled / tap to edit or enable")
                     }
                 }

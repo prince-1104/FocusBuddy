@@ -57,6 +57,7 @@ data class SubtaskEntity(
 data class FocusSessionEntity(
     @PrimaryKey val id: UUID, val taskId: UUID?, val startedAt: Instant, val endedAt: Instant?,
     val durationSeconds: Long, val completed: Boolean,
+    @ColumnInfo(defaultValue = "'Legacy'") val outcome: String = "Legacy",
 )
 
 data class TaskWithRelations(

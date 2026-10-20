@@ -39,4 +39,9 @@ class AndroidAlarmGateway(private val context: Context) : AlarmGateway {
         val pending = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), pending)
     }
+    override fun cancelMaintenance() {
+        val intent = Intent(context, ReminderAlarmReceiver::class.java).setAction("com.focusbuddy.MAINTAIN")
+            .setData(Uri.parse("focusbuddy://maintenance/v1"))
+        PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)?.let { alarms.cancel(it); it.cancel() }
+    }
 }

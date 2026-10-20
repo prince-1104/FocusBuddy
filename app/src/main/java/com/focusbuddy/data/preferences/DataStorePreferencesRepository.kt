@@ -26,6 +26,10 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
         val animations = booleanPreferencesKey("animations_enabled")
         val sound = booleanPreferencesKey("mascot_sound_enabled")
         val visible = booleanPreferencesKey("show_mascot")
+        val timeFormat = stringPreferencesKey("time_format")
+        val offset = intPreferencesKey("default_reminder_offset")
+        val alertSound = booleanPreferencesKey("default_alert_sound")
+        val alertVibration = booleanPreferencesKey("default_alert_vibration")
     }
 
     // Read failures propagate to the caller; personal preferences are never silently erased.
@@ -48,6 +52,10 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
             soundEnabled = preferences[Keys.sound] ?: defaults.soundEnabled,
             showMascot = preferences[Keys.visible] ?: defaults.showMascot,
             weekStart = preferences[Keys.weekStart]?.takeIf { it in 1..7 }?.let(java.time.DayOfWeek::of),
+            timeFormat = TimeFormat.entries.firstOrNull { it.name == preferences[Keys.timeFormat] } ?: defaults.timeFormat,
+            defaultReminderOffset = preferences[Keys.offset]?.takeIf { it in setOf(0, 5, 10, 30) },
+            defaultAlertSound = preferences[Keys.alertSound] ?: true,
+            defaultAlertVibration = preferences[Keys.alertVibration] ?: true,
         )
     }
 
@@ -55,6 +63,14 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
     override suspend fun setTheme(mode: ThemeMode) { store.edit { it[Keys.theme] = mode.name } }
     override suspend fun setMascotVisible(visible: Boolean) { store.edit { it[Keys.visible] = visible } }
     override suspend fun setAnimationsEnabled(enabled: Boolean) { store.edit { it[Keys.animations] = enabled } }
+    override suspend fun setProductivity(format: TimeFormat, offset: Int?, sound: Boolean, vibration: Boolean) {
+        require(offset == null || offset in setOf(0, 5, 10, 30))
+        store.edit {
+            it[Keys.timeFormat] = format.name; it[Keys.offset] = offset ?: -1
+            it[Keys.alertSound] = sound; it[Keys.alertVibration] = vibration
+        }
+    }
+    override suspend fun reset() { store.edit { it.clear() } }
 
     override suspend fun setSettings(settings: MascotSettings) {
         writeSettings(settings, includeWeekStart = true)
@@ -65,6 +81,10 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
     private suspend fun writeSettings(settings: MascotSettings, includeWeekStart: Boolean) {
         store.edit {
             if (includeWeekStart) it[Keys.weekStart] = settings.weekStart?.value ?: 0
+            if (includeWeekStart) {
+                it[Keys.timeFormat] = settings.timeFormat.name; it[Keys.offset] = settings.defaultReminderOffset ?: -1
+                it[Keys.alertSound] = settings.defaultAlertSound; it[Keys.alertVibration] = settings.defaultAlertVibration
+            }
             it[Keys.theme] = settings.theme.name
             it[Keys.mascot] = settings.selectedMascot
             it[Keys.personality] = settings.personality.name

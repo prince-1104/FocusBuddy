@@ -55,4 +55,5 @@ class AndroidNotifications(private val context: Context) : NotificationGateway {
         return try { manager.notify(key, 0, notification); true } catch (_: SecurityException) { false }
     }
     override fun cancel(key: String) { manager.cancel(key, 0) }
+    override fun cancelAll() { manager.cancelAll() }
 }

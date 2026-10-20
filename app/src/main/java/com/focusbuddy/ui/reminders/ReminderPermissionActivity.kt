@@ -91,10 +91,7 @@ fun ReminderSettingsEntry(compact: Boolean = false) {
         onDispose { owner.lifecycle.removeObserver(observer) }
     }
     TextButton({ context.startActivity(Intent(context, ReminderPermissionActivity::class.java)) }) {
-        Text(if (compact) "Notification and timing settings" else when {
-            !access.notifications -> "Reminders: notifications off / Review"
-            !access.exact -> "Reminders: timing may be delayed / Review"
-            else -> "Reminder notification settings"
-        })
+        Text(if (compact) "Notification and timing settings" else
+            "Notifications ${if (access.notifications) "on" else "off"} · ${if (access.exact) "Precise timing allowed" else "Inexact timing"} / Review")
     }
 }

@@ -43,10 +43,11 @@ internal fun DateField(value: String, label: String, onChange: (String) -> Unit,
 internal fun TimeField(value: String, label: String, onChange: (String) -> Unit, error: String? = null, enabled: Boolean = true) {
     var choosing by rememberSaveable { mutableStateOf(false) }
     EditorField(value, "$label / HH:mm", onChange, error, enabled)
+    val format = LocalMascotSettings.current.timeFormat
     TextButton({ choosing = true }, enabled = enabled) { Text("Choose ${label.lowercase()}") }
     if (choosing) {
         val initial = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.of(9, 0))
-        val picker = rememberTimePickerState(initial.hour, initial.minute, is24Hour = true)
+        val picker = rememberTimePickerState(initial.hour, initial.minute, is24Hour = format == TimeFormat.Hour24)
         AlertDialog(onDismissRequest = { choosing = false }, confirmButton = { TextButton({
             onChange(LocalTime.of(picker.hour, picker.minute).format(DateTimeFormatter.ofPattern("HH:mm"))); choosing = false
         }) { Text("Use time") } }, dismissButton = { TextButton({ choosing = false }) { Text("Cancel") } },
@@ -87,12 +88,13 @@ internal fun AlertFields(draft: AlertDraft, onChange: (AlertDraft) -> Unit, enab
         DateField(draft.date, "Alert date / YYYY-MM-DD", { onChange(draft.copy(date = it)) }, enabled = enabled)
         TimeField(draft.time, "Alert time", { onChange(draft.copy(time = it)) }, enabled = enabled)
     } else Text(if (draft.offsetMinutes == 0) "At event time" else "${draft.offsetMinutes} minutes before event time")
-    val summary = remember(draft, task) {
+    val format = LocalMascotSettings.current.timeFormat
+    val summary = remember(draft, task, format) {
         runCatching {
             val zone = ZoneId.systemDefault()
             val anchor = task?.let { EditorValidation.instant(it.date, if (it.allDay) "09:00" else it.startTime, zone, "trigger") }
             val record = EditorValidation.alert(draft, task?.let { java.util.UUID(0, 0) }, anchor, task?.recurrenceRule?.ifBlank { null }, zone, Instant.MIN, true, "trigger")
-            DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(zone).format(record.effectiveTriggerAt)
+            com.focusbuddy.domain.time.dateTimeFormatter(format).withZone(zone).format(record.effectiveTriggerAt)
         }.getOrDefault("Choose a valid date, time and repeat rule")
     }
     Text("${if (draft.enabled) "Alert" else "Disabled alert"}: $summary", style = MaterialTheme.typography.bodyMedium,

@@ -25,7 +25,7 @@ fun TaskDetailsSheet(state: TaskDetailsState, categories: List<Category>, onDism
             else -> {
                 val details = state.details
                 val task = details.task
-                val time = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault())
+                val time = com.focusbuddy.domain.time.dateTimeFormatter(LocalMascotSettings.current.timeFormat).withZone(ZoneId.systemDefault())
                 Text(task.title, style = MaterialTheme.typography.headlineSmall)
                 Text(task.scheduledDate.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)), color = MaterialTheme.colorScheme.primary)
                 Text(if (task.allDay) "All day" else task.startAt?.let(time::format).orEmpty() + (task.endAt?.let { " to ${time.format(it)}" } ?: ""))

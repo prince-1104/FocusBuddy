@@ -7,6 +7,9 @@
     <application
         android:name=".FocusBuddyApplication"
         android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="@string/app_name"
         android:supportsRtl="true"

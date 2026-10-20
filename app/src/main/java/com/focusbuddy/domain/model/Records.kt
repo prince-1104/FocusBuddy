@@ -74,11 +74,13 @@ data class Subtask(
 
 data class TaskDetails(val task: Task, val reminders: List<Reminder>, val subtasks: List<Subtask>)
 
+enum class FocusOutcome { Legacy, Running, Paused, Completed, Stopped, Interrupted }
 data class FocusSession(
     val id: UUID = UUID.randomUUID(), val taskId: UUID? = null,
     val startedAt: Instant, val endedAt: Instant? = null,
     /** Actual accumulated focus time, excluding pauses; not inferred from wall-clock time. */
     val durationSeconds: Long = 0, val completed: Boolean = false,
+    val outcome: FocusOutcome = if (completed) FocusOutcome.Completed else if (endedAt != null) FocusOutcome.Stopped else FocusOutcome.Legacy,
 ) {
     init {
         require(endedAt == null || endedAt >= startedAt)
@@ -88,6 +90,7 @@ data class FocusSession(
 }
 
 enum class MascotPersonality { Calm, Friendly, Playful, Focused }
+enum class TimeFormat { Hour12, Hour24 }
 
 data class MascotSettings(
     val selectedMascot: String = "bunny",
@@ -99,11 +102,16 @@ data class MascotSettings(
     val soundEnabled: Boolean = false,
     val showMascot: Boolean = true,
     val weekStart: java.time.DayOfWeek? = null,
+    val timeFormat: TimeFormat = TimeFormat.Hour24,
+    val defaultReminderOffset: Int? = null,
+    val defaultAlertSound: Boolean = true,
+    val defaultAlertVibration: Boolean = true,
 ) {
     init {
         require(selectedMascot.isNotBlank())
         require(supportedColors.isNotEmpty() && supportedColors.all { it in 0..0xFFFFFFFFL })
         require(selectedColor in supportedColors)
+        require(defaultReminderOffset == null || defaultReminderOffset in setOf(0, 5, 10, 30))
     }
 }
 

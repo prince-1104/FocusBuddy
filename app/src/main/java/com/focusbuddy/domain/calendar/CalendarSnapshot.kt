@@ -4,7 +4,9 @@ import com.focusbuddy.domain.model.*
 import java.time.*
 
 data class TaskOccurrence(val task: Task, val date: LocalDate, val start: Instant?, val subtasksCompleted: Int = 0, val subtasksTotal: Int = 0)
-data class AlertOccurrence(val reminder: Reminder, val trigger: Instant, val task: Task?)
+data class AlertOccurrence(val reminder: Reminder, val trigger: Instant, val task: Task?, val occurrenceId: String? = null) {
+    val identity: String get() = occurrenceId ?: "${reminder.id}:$trigger"
+}
 data class CalendarSnapshot(val days: List<DaySummary>, val tasks: List<TaskOccurrence>, val alerts: List<AlertOccurrence>, val categories: List<Category>, val zone: ZoneId)
 
 fun calendarSnapshot(tasks: List<Task>, reminders: List<Reminder>, categories: List<Category>, month: YearMonth, zone: ZoneId, subtasks: List<Subtask> = emptyList()): CalendarSnapshot {
@@ -51,7 +53,7 @@ sealed interface CalendarEntry {
         override val time = occurrence.start
     }
     data class ReminderAlert(val occurrence: AlertOccurrence) : CalendarEntry {
-        override val key = "alert:${occurrence.reminder.id}:${occurrence.trigger}"
+        override val key = "alert:${occurrence.identity}"
         override val time = occurrence.trigger
     }
 }

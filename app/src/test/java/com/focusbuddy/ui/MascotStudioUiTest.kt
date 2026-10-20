@@ -74,7 +74,7 @@ class MascotStudioUiTest {
         assertEquals("bunny", runBlocking { repository.settings.first().selectedMascot })
         compose.onNodeWithTag("mascot-reminder-preview").performScrollTo()
         compose.onNodeWithContentDescription("Reminder companion, Luma", useUnmergedTree = true).assertExists()
-        compose.onNodeWithText("Reminder preview · 9:00 AM").assertIsDisplayed()
+        compose.onNodeWithText("Reminder preview · 09:00").assertIsDisplayed()
         compose.onNodeWithText("Save companion").performScrollTo().performClick()
         compose.waitUntil(10_000) { current.state.value.saved }
         assertEquals("owl", runBlocking { repository.settings.first().selectedMascot })

@@ -21,7 +21,7 @@ fun ExploreRoute(viewModel: ExploreViewModel, editorModel: TodayViewModel, selec
         BuddyBottomSheet("Reminder details", viewModel::closeReminder, canDismiss = !state.disabling) {
             if (alert == null) Text("This alert is no longer active.") else {
                 Text(alert.reminder.title ?: alert.task?.title.orEmpty(), style = MaterialTheme.typography.titleLarge)
-                Text(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withZone(state.snapshot!!.zone).format(alert.trigger))
+                Text(com.focusbuddy.domain.time.dateTimeFormatter(LocalMascotSettings.current.timeFormat).withZone(state.snapshot!!.zone).format(alert.trigger))
                 Text(alert.task?.let { "Attached to: ${it.title}" } ?: "Standalone reminder")
                 alert.reminder.description?.let { Text(it) }
                 Text("Sound: ${if (alert.reminder.soundEnabled) "On" else "Off"} / Vibration: ${if (alert.reminder.vibrationEnabled) "On" else "Off"}")

@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -27,11 +28,12 @@ data class ExploreActions(
 @Composable
 fun ExploreScreen(state: ExploreState, actions: ExploreActions) {
     val snapshot = state.snapshot
-    val time = remember(snapshot?.zone) { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(snapshot?.zone ?: ZoneId.systemDefault()) }
+    val format = LocalMascotSettings.current.timeFormat
+    val time = remember(snapshot?.zone, format) { com.focusbuddy.domain.time.timeFormatter(format).withZone(snapshot?.zone ?: ZoneId.systemDefault()) }
     val counts = remember(snapshot) { snapshot?.days.orEmpty().associate { it.date to DayCounts(it.taskCount, it.reminderAlertCount) } }
     var weekMenu by remember { mutableStateOf(false) }
     val agenda = remember(state.selected, snapshot) { snapshot?.agenda(state.selected).orEmpty() }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
+    LazyColumn(Modifier.fillMaxSize().testTag("explore-agenda"), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Text("YOUR RHYTHM", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
@@ -78,7 +80,7 @@ fun ExploreScreen(state: ExploreState, actions: ExploreActions) {
                     BuddyCard {
                         Text("${state.tasks.size} tasks / ${state.alerts.size} reminder alerts", style = MaterialTheme.typography.titleMedium)
                         Text("${state.completed} completed / ${state.tasks.size - state.completed} remaining")
-                        DailyProgress(state.completed, state.tasks.size)
+                        DailyProgress(state.completed, state.tasks.size, animationsEnabled = LocalMascotSettings.current.animationsEnabled)
                         PrimaryButton("+ Add task", actions.add, Modifier.fillMaxWidth())
                         TextButton(actions.addReminder) { Text("+ Standalone reminder") }
                         TextButton(actions.manageReminders) { Text("Manage reminders") }

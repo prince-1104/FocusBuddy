@@ -9,11 +9,13 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [TaskEntity::class, ReminderEntity::class, CategoryEntity::class, SubtaskEntity::class, FocusSessionEntity::class, OccurrenceEntity::class, AlarmJournalEntity::class],
-    version = 4, exportSchema = true,
+    entities = [TaskEntity::class, ReminderEntity::class, CategoryEntity::class, SubtaskEntity::class, FocusSessionEntity::class, OccurrenceEntity::class, AlarmJournalEntity::class, ActiveFocusEntity::class],
+    version = 5, exportSchema = true,
 )
 @TypeConverters(DatabaseConverters::class)
 abstract class FocusBuddyDatabase : RoomDatabase() {
+    abstract fun activeFocus(): ActiveFocusDao
+    abstract fun personalData(): PersonalDataDao
     abstract fun occurrences(): OccurrenceDao
     abstract fun tasks(): TaskDao
     abstract fun reminders(): ReminderDao
@@ -51,10 +53,21 @@ abstract class FocusBuddyDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE focus_sessions ADD COLUMN outcome TEXT NOT NULL DEFAULT 'Legacy'")
+                db.execSQL("UPDATE focus_sessions SET outcome = CASE WHEN completed = 1 THEN 'Completed' WHEN endedAt IS NOT NULL THEN 'Stopped' ELSE 'Legacy' END")
+                db.execSQL("""CREATE TABLE IF NOT EXISTS active_focus (slot INTEGER NOT NULL, sessionId TEXT NOT NULL,
+                    targetSeconds INTEGER NOT NULL, remainingMillis INTEGER NOT NULL, segmentStartedElapsed INTEGER,
+                    bootId TEXT NOT NULL, checkpointAt INTEGER NOT NULL, PRIMARY KEY(slot),
+                    FOREIGN KEY(sessionId) REFERENCES focus_sessions(id) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+                db.execSQL("CREATE UNIQUE INDEX index_active_focus_sessionId ON active_focus(sessionId)")
+            }
+        }
         fun create(context: Context, name: String = "focusbuddy.db"): FocusBuddyDatabase =
             Room.databaseBuilder(context.applicationContext, FocusBuddyDatabase::class.java, name)
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
     }
 }

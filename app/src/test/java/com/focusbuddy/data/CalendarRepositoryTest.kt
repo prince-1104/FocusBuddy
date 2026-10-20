@@ -6,6 +6,7 @@ import com.focusbuddy.data.local.FocusBuddyDatabase
 import com.focusbuddy.data.repository.*
 import com.focusbuddy.domain.model.*
 import com.focusbuddy.domain.time.*
+import com.focusbuddy.domain.calendar.agenda
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -34,6 +35,23 @@ class CalendarRepositoryTest {
     private val calendar = RoomCalendarRepository(database, source, Clock.fixed(Instant.parse("1900-01-01T00:00:00Z"), ZoneOffset.UTC))
 
     @After fun close() { database.close(); context.deleteDatabase(name) }
+
+    @Test fun snoozeAndNormalOccurrenceAtSameInstantKeepSeparateCountsAndStableKeys() = runTest {
+        val trigger = Instant.parse("2026-03-09T13:00:00Z")
+        val reminder = Reminder(title = "Two distinct occurrences", triggerAt = trigger, recurrenceRule = "FREQ=DAILY")
+        reminders.create(reminder)
+        val snoozeKey = UUID.randomUUID().toString()
+        database.occurrences().insert(com.focusbuddy.data.local.OccurrenceEntity(snoozeKey, reminder.id,
+            trigger.minusSeconds(86400), trigger, "Snooze", com.focusbuddy.domain.reminders.fingerprint(reminder, null)))
+        val snapshot = calendar.observeSnapshot(YearMonth.of(2026, 3)).first()
+        val date = trigger.atZone(zones.value).toLocalDate()
+        val alerts = snapshot.alerts.filter { it.trigger == trigger }
+        assertEquals(2, alerts.size)
+        assertEquals(2, snapshot.days.first { it.date == date }.reminderAlertCount)
+        assertEquals(2, snapshot.agenda(date).map { it.key }.toSet().size)
+        val agenda = RoomAgendaRepository(database, clock).observe(date, date, zones.value).first()
+        assertEquals(2, agenda.standaloneAlerts.map { it.identity }.toSet().size)
+    }
 
     @Test fun countsEachAlertIndependentlyAndKeepsTaskDateExplicit() = runTest {
         val date = LocalDate.of(2026, 3, 8)

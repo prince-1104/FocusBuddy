@@ -23,6 +23,7 @@ class TodayViewModel(
     private val zone: () -> ZoneId = ZoneId::systemDefault,
     private val reminders: ReminderRepository,
     private val clock: Clock = Clock.systemUTC(),
+    private val preferences: com.focusbuddy.domain.repository.PreferencesRepository? = null,
 ) : ViewModel() {
     private val moments = MutableSharedFlow<com.focusbuddy.domain.mascot.MascotMoment>(extraBufferCapacity = 1)
     val mascotMoments = moments.asSharedFlow()
@@ -81,8 +82,16 @@ class TodayViewModel(
     fun beginTask(date: LocalDate? = null, time: LocalTime? = null) {
         if (editor.value != null) return
         editorJob?.cancel()
-        editor.value = TaskEditorState(draft = TaskDraft(date = (date ?: selectedDates.value).toString(),
-            allDay = time == null, startTime = time?.format(DateTimeFormatter.ofPattern("HH:mm")).orEmpty()))
+        val chosen = date ?: selectedDates.value
+        val opening = TaskEditorState(draft = newTaskDraft(chosen, time, MascotSettings()), loading = preferences != null)
+        editor.value = opening
+        if (preferences != null) editorJob = viewModelScope.launch {
+            try {
+                val draft = newTaskDraft(chosen, time, preferences.settings.first())
+                editor.update { if (it?.session == opening.session) it.copy(draft = draft, original = draft, loading = false) else it }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { editor.update { it?.copy(loading = false, loadError = "Your reminder defaults couldn't be loaded. Close and retry.") } }
+        }
     }
 
     fun editTask(id: String) {
@@ -203,8 +212,16 @@ class TodayViewModel(
     fun createReminder() { beginReminder(selectedDates.value, null) }
     fun beginReminder(date: LocalDate? = null, time: LocalTime? = null) {
         if (reminderEditor.value != null) return
-        reminderEditor.value = ReminderEditorState(draft = ReminderDraft(alert = AlertDraft(
-            date = (date ?: selectedDates.value).toString(), time = (time ?: LocalTime.of(9, 0)).format(DateTimeFormatter.ofPattern("HH:mm")))))
+        val chosen = date ?: selectedDates.value
+        val opening = ReminderEditorState(draft = newReminderDraft(chosen, time, MascotSettings()), loading = preferences != null)
+        reminderEditor.value = opening
+        if (preferences != null) reminderJob = viewModelScope.launch {
+            try {
+                val draft = newReminderDraft(chosen, time, preferences.settings.first())
+                reminderEditor.update { if (it?.session == opening.session) it.copy(draft = draft, original = draft, loading = false) else it }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { reminderEditor.update { it?.copy(loading = false, loadError = "Your reminder defaults couldn't be loaded. Close and retry.") } }
+        }
     }
     fun editReminder(id: String) {
         if (reminderEditor.value?.busy == true) return
@@ -270,4 +287,8 @@ class TodayViewModel(
     fun openReminderLibrary() { libraryOpen.value = true }
     fun closeReminderLibrary() { libraryOpen.value = false }
     fun retryReminderLibrary() { libraryRetry.value++ }
+    fun cancelPendingEdits() {
+        editorJob?.cancel(); reminderJob?.cancel()
+        editor.value = null; reminderEditor.value = null; detailId.value = null; libraryOpen.value = false
+    }
 }

@@ -15,6 +15,7 @@ import com.focusbuddy.ui.components.*
 fun TaskEditorSheet(state: TaskEditorState, categories: List<Category>, onChange: (TaskDraft) -> Unit,
     onSave: () -> Unit, onDismiss: () -> Unit, onDelete: () -> Unit, onRetry: () -> Unit) {
     val draft = state.draft
+    val defaults = LocalMascotSettings.current
     val enabled = !state.busy
     BuddyBottomSheet(if (state.taskId == null) "Create a task" else "Edit your task", onDismiss, canDismiss = enabled, hasUnsavedChanges = draft != state.original, footer = {
         EditorSaveFooter(if (state.busy) "Saving task..." else if (state.taskId == null) "Create task" else "Save changes",
@@ -78,7 +79,7 @@ fun TaskEditorSheet(state: TaskEditorState, categories: List<Category>, onChange
                 Text("${draft.alerts.count { it.enabled }} enabled alerts. All-day presets use 09:00.", style = MaterialTheme.typography.bodySmall)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(0, 5, 10, 30).forEach { minutes ->
-                        AssistChip(onClick = { if (draft.alerts.none { it.offsetMinutes == minutes }) onChange(draft.copy(alerts = draft.alerts + AlertDraft(offsetMinutes = minutes, followTaskRecurrence = true))) },
+                        AssistChip(onClick = { if (draft.alerts.none { it.offsetMinutes == minutes }) onChange(draft.copy(alerts = draft.alerts + AlertDraft(offsetMinutes = minutes, followTaskRecurrence = true, soundEnabled = defaults.defaultAlertSound, vibrationEnabled = defaults.defaultAlertVibration))) },
                             label = { Text(if (minutes == 0) "At event" else "$minutes min before") }, enabled = enabled)
                     }
                 }
@@ -89,7 +90,7 @@ fun TaskEditorSheet(state: TaskEditorState, categories: List<Category>, onChange
                         TextButton({ onChange(draft.copy(alerts = draft.alerts.filterNot { it.id == alert.id })) }, enabled = enabled) { Text("Remove alert") }
                     }
                 } }
-                SecondaryButton("+ Custom reminder", { onChange(draft.copy(alerts = draft.alerts + AlertDraft(date = draft.date))) }, enabled = enabled)
+                SecondaryButton("+ Custom reminder", { onChange(draft.copy(alerts = draft.alerts + AlertDraft(date = draft.date, soundEnabled = defaults.defaultAlertSound, vibrationEnabled = defaults.defaultAlertVibration))) }, enabled = enabled)
                 EditorToggle("Keep enabled alerts in the past", draft.allowPastAlerts, { onChange(draft.copy(allowPastAlerts = it)) }, enabled)
                 Text("Past alerts expire without delivery; they are never silently moved to now.", style = MaterialTheme.typography.bodySmall)
                 Text("Alerts are saved on this device. Delivery follows your Android notification, channel and timing permissions.", style = MaterialTheme.typography.bodySmall)

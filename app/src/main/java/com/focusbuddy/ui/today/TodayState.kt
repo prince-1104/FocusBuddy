@@ -33,7 +33,7 @@ data class TodayUiState(
 
 /** Presentation formatting only; grouping, due-state rules, and progress come from the domain. */
 internal fun Dashboard.uiState(): TodayUiState {
-    val time = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(zone)
+    val time = com.focusbuddy.domain.time.timeFormatter(settings.timeFormat).withZone(zone)
     val shortDate = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
     return TodayUiState(selectedDate, today, greeting,
         sections = groups.map { group -> TaskSectionUi(group.section, group.tasks.map { card ->
@@ -52,8 +52,8 @@ internal fun Dashboard.uiState(): TodayUiState {
                 }, completed = card.task.completed, categoryColor = card.category?.color,
                 reminderCount = card.activeReminderCount, series = card.task.recurrenceRule != null, overdue = card.overdue, subtasksCompleted = card.subtasksCompleted, subtasksTotal = card.subtasksTotal)
         }) },
-        reminders = standaloneReminders.map { ReminderCardData(it.title.orEmpty(), time.format(it.effectiveTriggerAt),
-            "Standalone reminder", "${it.id}:${it.effectiveTriggerAt}") },
+        reminders = standaloneAlerts.map { ReminderCardData(it.reminder.title.orEmpty(), time.format(it.trigger),
+            "Standalone reminder", "${it.reminder.id}:${it.identity}") },
         completed = completed, total = total, categories = categories, days = days,
         showMascot = settings.showMascot, animationsEnabled = settings.animationsEnabled)
 }

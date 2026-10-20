@@ -1,6 +1,7 @@
 package com.focusbuddy.data.repository
 
 import androidx.room.withTransaction
+import com.focusbuddy.data.reminders.preserveSnoozes
 import com.focusbuddy.data.local.FocusBuddyDatabase
 import com.focusbuddy.domain.model.*
 import com.focusbuddy.domain.repository.TaskRepository
@@ -12,6 +13,7 @@ import java.util.UUID
 
 class RoomTaskRepository(private val database: FocusBuddyDatabase, private val clock: Clock, private val zone: () -> java.time.ZoneId = java.time.ZoneId::systemDefault) : TaskRepository {
     private val tasks = database.tasks()
+    override fun observeAll() = tasks.observeAll().map { rows -> rows.map { it.model() } }
     private val reminders = database.reminders()
     private val subtasks = database.subtasks()
 
@@ -39,9 +41,11 @@ class RoomTaskRepository(private val database: FocusBuddyDatabase, private val c
             val trigger = alert.offsetMinutes?.let { offset ->
                 (record.startAt ?: record.scheduledDate.atTime(9, 0).atZone(zone()).toInstant()).minusSeconds(offset * 60L)
             } ?: alert.triggerAt
-            reminders.update(alert.copy(triggerAt = trigger,
+            val updated = alert.copy(triggerAt = trigger,
                 recurrenceRule = if (alert.followTaskRecurrence) record.recurrenceRule else alert.recurrenceRule,
-                snoozedUntil = alert.snoozedUntil?.takeIf { trigger == alert.triggerAt }).entity())
+                snoozedUntil = alert.snoozedUntil?.takeIf { trigger == alert.triggerAt })
+            reminders.update(updated.entity())
+            database.preserveSnoozes(alert, updated, previous.model(), record)
         }
         if (record.completed) reminders.disableForTask(record.id)
         record
@@ -60,7 +64,10 @@ class RoomTaskRepository(private val database: FocusBuddyDatabase, private val c
         previousAlerts.keys.filter { old -> reminders.none { it.id == old } }.forEach { this.reminders.delete(it) }
         reminders.forEach { edited ->
             val entity = (if (record.completed) edited.copy(enabled = false, snoozedUntil = null) else edited).entity()
-            if (entity.id in previousAlerts) this.reminders.update(entity) else this.reminders.insert(entity)
+            if (entity.id in previousAlerts) {
+                this.reminders.update(entity)
+                database.preserveSnoozes(previousAlerts.getValue(entity.id).model(), entity.model(), record, record)
+            } else this.reminders.insert(entity)
         }
         this.subtasks.deleteForTask(id)
         this.subtasks.insertAll(subtasks.map { it.entity() })

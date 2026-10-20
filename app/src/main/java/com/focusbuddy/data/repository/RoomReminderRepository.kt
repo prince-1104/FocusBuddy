@@ -1,6 +1,7 @@
 package com.focusbuddy.data.repository
 
 import androidx.room.withTransaction
+import com.focusbuddy.data.reminders.preserveSnoozes
 import com.focusbuddy.data.local.FocusBuddyDatabase
 import com.focusbuddy.domain.model.Reminder
 import com.focusbuddy.domain.repository.ReminderRepository
@@ -25,8 +26,11 @@ class RoomReminderRepository(private val database: FocusBuddyDatabase, private v
     }
 
     override suspend fun update(reminder: Reminder) = database.withTransaction {
+        val previous = requireNotNull(reminders.get(reminder.id)) { "Reminder does not exist" }.model()
         validateAttachment(reminder)
         require(reminders.update(reminder.entity()) == 1) { "Reminder does not exist" }
+        database.preserveSnoozes(previous, reminder, previous.taskId?.let { database.tasks().get(it)?.model() },
+            reminder.taskId?.let { database.tasks().get(it)?.model() })
     }
 
     override suspend fun get(id: UUID) = reminders.get(id)?.model()

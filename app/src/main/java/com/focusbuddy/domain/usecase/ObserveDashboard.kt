@@ -53,7 +53,7 @@ class ObserveDashboard(
                     now.hour < 18 -> Greeting.Afternoon
                     else -> Greeting.Evening
                 }, groups, snapshot.standaloneReminders, scheduled.count { it.task.completed }, scheduled.size,
-                snapshot.categories, snapshot.days, settings, now.zone)
+                snapshot.categories, snapshot.days, settings, now.zone, snapshot.standaloneAlerts)
         }
     }
 }

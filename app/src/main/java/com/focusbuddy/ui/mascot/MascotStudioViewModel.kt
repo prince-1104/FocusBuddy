@@ -17,12 +17,16 @@ class MascotStudioViewModel(private val repository: PreferencesRepository,
     private val mutable = MutableStateFlow(MascotStudioState(draft = restored, dirty = restored != null))
     val state = mutable.asStateFlow()
     private var reading: Job? = null
+    private var saving: Job? = null
+    fun cancelPendingSave() { saving?.cancel(); mutable.update { it.copy(busy = false) } }
     init { retry() }
     fun retry() {
         reading?.cancel()
         reading = viewModelScope.launch {
             repository.settings.catch { mutable.update { it.copy(error = "Your companion settings couldn't be loaded. Please retry.") } }
-                .collect { saved -> mutable.update { it.copy(loaded = true, draft = if (it.dirty) it.draft else saved, error = null) } }
+                .collect { saved -> mutable.update { it.copy(loaded = true, draft = if (it.dirty) it.draft?.copy(
+                    weekStart = saved.weekStart, timeFormat = saved.timeFormat, defaultReminderOffset = saved.defaultReminderOffset,
+                    defaultAlertSound = saved.defaultAlertSound, defaultAlertVibration = saved.defaultAlertVibration) else saved, error = null) } }
         }
     }
     fun change(value: MascotSettings) {
@@ -43,7 +47,7 @@ class MascotStudioViewModel(private val repository: PreferencesRepository,
         if (current.busy || !current.loaded || !current.dirty) return
         val value = current.draft ?: return
         mutable.update { it.copy(busy = true, error = null) }
-        viewModelScope.launch {
+        saving = viewModelScope.launch {
             try {
                 repository.setMascotSettings(value)
                 handle.remove<Bundle>("mascotDraft")

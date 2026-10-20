@@ -86,7 +86,7 @@ fun MascotStudio(state: MascotStudioState, onChange: (MascotSettings) -> Unit, o
                     val sound = rememberCompanionSound()
                     SecondaryButton("Preview companion sound", { sound() }, enabled = !state.busy)
                 }
-                MascotReminderPreview(draft, "Your next intention", "Reminder preview · 9:00 AM")
+                MascotReminderPreview(draft, "Your next intention", "Reminder preview · ${com.focusbuddy.domain.time.timeFormatter(draft.timeFormat).format(java.time.LocalTime.of(9, 0))}")
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error); TextButton(onRetry) { Text("Retry loading") } }
                 if (state.saved) Text("Companion saved", modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
                 PrimaryButton(if (state.busy) "Saving…" else "Save companion", onSave, Modifier.fillMaxWidth(), state.loaded && state.dirty && !state.busy)

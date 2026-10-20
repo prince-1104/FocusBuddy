@@ -40,7 +40,8 @@ class RoomAgendaRepository(private val database: FocusBuddyDatabase, private val
             AgendaSnapshot((selectedTasks + records.overdue).distinctBy { it.task.id },
                 snapshot.alerts.filter { it.reminder.taskId == null && it.trigger.atZone(zone).toLocalDate() == selected }
                     .map { it.reminder.copy(triggerAt = it.trigger, snoozedUntil = null) },
-                records.categories, snapshots.flatMap { it.days }.filter { it.date in from..through })
+                records.categories, snapshots.flatMap { it.days }.filter { it.date in from..through },
+                snapshot.alerts.filter { it.reminder.taskId == null && it.trigger.atZone(zone).toLocalDate() == selected })
         }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default)
 
     private data class Records(val tasks: List<Task>, val reminders: List<Reminder>, val categories: List<Category>,

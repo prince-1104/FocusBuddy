@@ -40,6 +40,31 @@ class PreferencesRepositoryTest {
     @Test fun defaultsAreConfigurationNotSeededApplicationRecords() = runTest {
         assertEquals(MascotSettings(), newRepository().settings.first())
     }
+    @Test fun productivityPreferencesSurviveReopenAndStudioSavesAndResetClearsThem() = runTest {
+        val repository = newRepository()
+        repository.setProductivity(TimeFormat.Hour12, 10, sound = false, vibration = false)
+        repository.setWeekStart(java.time.DayOfWeek.SUNDAY)
+        repository.setMascotSettings(MascotSettings(selectedMascot = "owl", theme = ThemeMode.Dark))
+        scope.coroutineContext.job.cancelAndJoin()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val reopened = newRepository()
+        val saved = reopened.settings.first()
+        assertEquals(TimeFormat.Hour12, saved.timeFormat); assertEquals(10, saved.defaultReminderOffset)
+        assertFalse(saved.defaultAlertSound); assertFalse(saved.defaultAlertVibration)
+        assertEquals(java.time.DayOfWeek.SUNDAY, saved.weekStart); assertEquals("owl", saved.selectedMascot)
+        reopened.reset(); assertEquals(MascotSettings(), reopened.settings.first())
+    }
+    @Test fun malformedProductivitySettingsFallBackWithoutOverwritingValidPreferences() = runTest {
+        val store = PreferenceDataStoreFactory.create(scope = scope, produceFile = { file })
+        store.updateData { it.toMutablePreferences().apply {
+            this[androidx.datastore.preferences.core.stringPreferencesKey("time_format")] = "Not a format"
+            this[androidx.datastore.preferences.core.intPreferencesKey("default_reminder_offset")] = -100
+            this[androidx.datastore.preferences.core.stringPreferencesKey("theme_mode")] = "Dark"
+        } }
+        val saved = DataStorePreferencesRepository(store).settings.first()
+        assertEquals(TimeFormat.Hour24, saved.timeFormat); assertNull(saved.defaultReminderOffset)
+        assertEquals(ThemeMode.Dark, saved.theme)
+    }
 
     @Test fun studioSavePreservesConcurrentWeekStartAndLegacyPersonalitiesAreMapped() = runTest {
         val store = PreferenceDataStoreFactory.create(scope = scope, produceFile = { file })

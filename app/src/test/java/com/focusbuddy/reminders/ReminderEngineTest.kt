@@ -247,6 +247,40 @@ class ReminderEngineTest {
         assertEquals("Exact", row(alert.id).alarmMode)
         assertEquals(1, db.occurrences().all().size)
     }
+    @Test fun titleAndSoundEditsPreserveFutureSnoozesButTimingEditsCancelThem() = runTest {
+        val task = tasks.create(Task(title = "Original title", scheduledDate = LocalDate.of(2026, 10, 20)))
+        val alert = alert(task); engine.reconcile(); val initial = row(alert.id)
+        clock.now = initial.triggerAt; engine.deliver(initial.key)
+        val snooze = engine.snooze(initial.key, 10)!!
+        val changed = tasks.update(task.copy(title = "Updated title"))
+        reminders.update(alert.copy(soundEnabled = false))
+        engine.reconcile()
+        assertEquals("Pending", db.occurrences().get(snooze)!!.status)
+        assertTrue(alarms.registered.containsKey(snooze))
+        clock.now = db.occurrences().get(snooze)!!.triggerAt; engine.deliver(snooze)
+        assertEquals("Updated title", notifications.shown.last().title); assertFalse(notifications.shown.last().sound)
+        val nextSnooze = engine.snooze(snooze, 10)!!
+        tasks.update(changed.copy(scheduledDate = changed.scheduledDate.plusDays(1)))
+        engine.reconcile()
+        assertEquals("Canceled", db.occurrences().get(nextSnooze)!!.status)
+        assertFalse(alarms.registered.containsKey(nextSnooze))
+    }
+    @Test fun clearAllDataRemovesRecordsAndDerivedAlarmsWithoutOrphans() = runTest {
+        val category = Category(name = "Personal", color = 0xFFB8C9F0, icon = "tag")
+        RoomCategoryRepository(db).create(category)
+        val task = tasks.create(Task(title = "Clear me", scheduledDate = LocalDate.of(2026, 10, 20), categoryId = category.id))
+        alert(task); alert()
+        val focus = com.focusbuddy.data.focus.RoomFocusTimerRepository(db, com.focusbuddy.data.FakeFocusClock())
+        focus.start(25, task.id)
+        engine.reconcile(); assertEquals(2, alarms.registered.size)
+        engine.clearPersonalData()
+        assertTrue(db.tasks().all().isEmpty()); assertTrue(db.reminders().all().isEmpty())
+        assertTrue(db.categories().getAll().isEmpty()); assertTrue(db.focusSessions().observeAll().first().isEmpty())
+        assertNull(db.activeFocus().get()); assertTrue(db.occurrences().all().isEmpty())
+        assertTrue(db.occurrences().journal().isEmpty()); assertTrue(alarms.registered.isEmpty())
+        engine.reconcile(); assertTrue(alarms.registered.isEmpty())
+        assertTrue(notifications.cleared)
+    }
 }
 
 class MutableClock(@Volatile var now: Instant) : Clock() {
@@ -272,8 +306,10 @@ class FakeAlarms : AlarmGateway {
     override fun maintenance(at: Instant) = Unit
 }
 class FakeNotifications : NotificationGateway {
+    var cleared = false
     var allowed = true
     val shown = java.util.Collections.synchronizedList(mutableListOf<ReminderDelivery>())
     override fun show(delivery: ReminderDelivery): Boolean { if (allowed) shown += delivery; return allowed }
     override fun cancel(key: String) = Unit
+    override fun cancelAll() { cleared = true }
 }

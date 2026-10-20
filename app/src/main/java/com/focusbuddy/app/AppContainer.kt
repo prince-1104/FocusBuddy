@@ -26,6 +26,14 @@ class AppContainer(context: Context) {
     val reminders: ReminderRepository by lazy { SchedulingReminderRepository(RoomReminderRepository(database, clock), reminderScheduler) }
     val categories: CategoryRepository by lazy { RoomCategoryRepository(database) }
     val focusSessions: FocusSessionRepository by lazy { RoomFocusSessionRepository(database) }
+    val focusTimer: com.focusbuddy.domain.focus.FocusTimerRepository by lazy {
+        com.focusbuddy.data.focus.RoomFocusTimerRepository(database, com.focusbuddy.platform.focus.AndroidFocusClock(appContext))
+    }
+    suspend fun clearPersonalData() {
+        reminderEngine.clearPersonalData()
+        preferences.reset()
+        reminderScheduler.requestReconciliation()
+    }
     val calendar: CalendarRepository by lazy { RoomCalendarRepository(database, DeviceTimeZoneSource(appContext)) }
     val agenda: AgendaRepository by lazy { RoomAgendaRepository(database) }
     val observeDashboard by lazy { ObserveDashboard(agenda, preferences, SystemMomentSource(clock, DeviceTimeZoneSource(appContext))) }

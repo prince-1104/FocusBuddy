@@ -45,3 +45,4 @@ jobs:
             app/build/reports/tests/testDebugUnitTest/
             app/build/reports/lint-results-debug.*
             app/build/reports/mascot-studio.png
+            app/build/reports/qa/

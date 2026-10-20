@@ -81,7 +81,7 @@ class ReminderEngine(private val db: FocusBuddyDatabase, private val alarms: Ala
                 dao.update(row.copy(alarmMode = "Error")) // durable retry on the next job/startup/maintenance.
             }
         }
-        alarms.maintenance(now.plus(Duration.ofHours(12)))
+        if (records.second.any { it.enabled }) alarms.maintenance(now.plus(Duration.ofHours(12))) else alarms.cancelMaintenance()
     } }
     suspend fun deliver(key: String) = withContext(Dispatchers.IO) { mutex.withLock {
         val now = clock.instant()
@@ -149,4 +149,10 @@ class ReminderEngine(private val db: FocusBuddyDatabase, private val alarms: Ala
         withContext(Dispatchers.IO) { db.withTransaction { dao.insert(occurrence.entity()) } }
         reconcile()
     }
+    suspend fun clearPersonalData() = withContext(Dispatchers.IO) { mutex.withLock {
+        db.personalData().clear()
+        // Surviving journal identities guarantee recoverable cancellation if the process dies here.
+        dao.journal().forEach { row -> alarms.cancel(row.key); notifications.cancel(row.key); dao.forgetAlarm(row.key) }
+        notifications.cancelAll(); alarms.cancelMaintenance()
+    } }
 }

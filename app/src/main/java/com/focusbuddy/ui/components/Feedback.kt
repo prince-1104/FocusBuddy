@@ -16,7 +16,7 @@ fun EmptyState(
     title: String,
     message: String,
     modifier: Modifier = Modifier,
-    illustration: @Composable () -> Unit = { MascotArtwork(Modifier.size(96.dp)) },
+    illustration: @Composable () -> Unit = { if (LocalMascotSettings.current.showMascot) MascotArtwork(Modifier.size(96.dp)) },
 ) {
     Column(modifier.fillMaxWidth().padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

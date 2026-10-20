@@ -8,6 +8,7 @@ import java.util.UUID
 
 @Dao
 interface TaskDao {
+    @Query("SELECT * FROM tasks ORDER BY scheduledDate, startAt, createdAt, id") fun observeAll(): Flow<List<TaskEntity>>
     @Query("SELECT * FROM tasks") suspend fun all(): List<TaskEntity>
     @Query("SELECT * FROM tasks WHERE scheduledDate <= :through AND (scheduledDate >= :from OR recurrenceRule IS NOT NULL)")
     suspend fun calendarCandidates(from: LocalDate, through: LocalDate): List<TaskEntity>

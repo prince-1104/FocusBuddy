@@ -2,12 +2,14 @@ package com.focusbuddy.domain.repository
 
 import com.focusbuddy.domain.model.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.util.UUID
 
 interface TaskRepository {
+    fun observeAll(): Flow<List<Task>> = observeScheduled(LocalDate.MIN, LocalDate.MAX)
     /** Atomic aggregate creation. All supplied children must belong to the new task. */
     suspend fun create(task: Task, reminders: List<Reminder> = emptyList(), subtasks: List<Subtask> = emptyList()): Task
     suspend fun update(task: Task): Task
@@ -63,6 +65,11 @@ interface PreferencesRepository {
     suspend fun setMascotSettings(settings: MascotSettings) { setSettings(settings) }
     suspend fun setMascotVisible(visible: Boolean)
     suspend fun setAnimationsEnabled(enabled: Boolean)
+    suspend fun setProductivity(format: TimeFormat, offset: Int?, sound: Boolean, vibration: Boolean) {
+        val current = settings.first()
+        setSettings(current.copy(timeFormat = format, defaultReminderOffset = offset, defaultAlertSound = sound, defaultAlertVibration = vibration))
+    }
+    suspend fun reset() { setSettings(MascotSettings()) }
 }
 
 interface CalendarRepository {

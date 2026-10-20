@@ -20,6 +20,25 @@ import com.focusbuddy.ui.theme.FocusBuddyTheme
 import com.focusbuddy.ui.today.TodayViewModel
 
 class MainActivity : ComponentActivity() {
+    private val focusViewModel: com.focusbuddy.ui.focus.FocusViewModel by viewModels {
+        viewModelFactory { initializer {
+            val container = (application as FocusBuddyApplication).container
+            com.focusbuddy.ui.focus.FocusViewModel(container.focusTimer, container.focusSessions, container.tasks, createSavedStateHandle())
+        } }
+    }
+    private val settingsViewModel: com.focusbuddy.ui.settings.SettingsViewModel by viewModels {
+        viewModelFactory { initializer {
+            val container = (application as FocusBuddyApplication).container
+            com.focusbuddy.ui.settings.SettingsViewModel(container.preferences, container::clearPersonalData)
+        } }
+    }
+    private val discoveryViewModel: com.focusbuddy.ui.discovery.TaskDiscoveryViewModel by viewModels {
+        viewModelFactory { initializer {
+            val container = (application as FocusBuddyApplication).container
+            com.focusbuddy.ui.discovery.TaskDiscoveryViewModel(container.tasks, container.categories,
+                com.focusbuddy.domain.time.SystemMomentSource(java.time.Clock.systemUTC(), com.focusbuddy.data.time.DeviceTimeZoneSource(application)), createSavedStateHandle())
+        } }
+    }
     private val mascotViewModel: com.focusbuddy.ui.mascot.MascotStudioViewModel by viewModels {
         viewModelFactory { initializer {
             com.focusbuddy.ui.mascot.MascotStudioViewModel((application as FocusBuddyApplication).container.preferences, createSavedStateHandle())
@@ -34,7 +53,7 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 val container = (application as FocusBuddyApplication).container
-                TodayViewModel(appViewModel.selectedDate, container.observeDashboard, container.tasks, appViewModel::selectDate, reminders = container.reminders)
+                TodayViewModel(appViewModel.selectedDate, container.observeDashboard, container.tasks, appViewModel::selectDate, reminders = container.reminders, preferences = container.preferences)
             }
         }
     }
@@ -60,7 +79,17 @@ class MainActivity : ComponentActivity() {
                     else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
             }
-            FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel, todayViewModel, exploreViewModel, mascotViewModel) }
+            FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel, todayViewModel, exploreViewModel, mascotViewModel,
+                focusViewModel, settingsViewModel, discoveryViewModel,
+                beforeClear = {
+                    todayViewModel.cancelPendingEdits()
+                    mascotViewModel.cancelPendingSave()
+                    focusViewModel.cancelPendingOperation()
+                    discoveryViewModel.cancelPendingOperation()
+                }, afterClear = {
+                    startActivity(android.content.Intent(this, MainActivity::class.java)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK))
+                }) }
         }
     }
 
