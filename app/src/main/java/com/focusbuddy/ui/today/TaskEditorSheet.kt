@@ -21,6 +21,8 @@ fun TaskEditorSheet(state: TaskEditorState, categories: List<Category>, onChange
             state.loading -> LoadingState("Opening your task")
             state.loadError != null -> ErrorState(state.loadError, onRetry)
             else -> {
+                if (state.recurrenceRule != null) Text("Editing the recurring series. Changes and deletion apply to the whole series.",
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 EditorField(draft.title, "Title", { onChange(draft.copy(title = it)) }, state.validation["title"], !state.busy)
                 OutlinedTextField(draft.description, { onChange(draft.copy(description = it)) },
                     modifier = Modifier.fillMaxWidth(), label = { Text("Notes · optional") }, minLines = 2,

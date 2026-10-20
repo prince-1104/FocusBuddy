@@ -9,27 +9,24 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.focusbuddy.ui.components.DestinationIcon
 import com.focusbuddy.ui.screens.*
 import com.focusbuddy.domain.model.ThemeMode
-import java.time.LocalDate
 import com.focusbuddy.ui.today.TodayRoute
 import com.focusbuddy.ui.today.TodayViewModel
 
 @Composable
-fun FocusBuddyApp(appViewModel: AppViewModel, todayViewModel: TodayViewModel) {
+fun FocusBuddyApp(appViewModel: AppViewModel, todayViewModel: TodayViewModel, exploreViewModel: com.focusbuddy.ui.explore.ExploreViewModel) {
     val selectedName by appViewModel.destination.collectAsStateWithLifecycle()
     val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
-    val selectedDate by appViewModel.selectedDate.collectAsStateWithLifecycle()
     val destination = Destination.entries.firstOrNull { it.name == selectedName } ?: Destination.Today
     BackHandler(enabled = destination != Destination.Today) { appViewModel.select(Destination.Today) }
     FocusBuddyContent(destination, appViewModel::select, uiState.theme, appViewModel::setTheme,
-        todayContent = { TodayRoute(todayViewModel, appViewModel::selectDate, appViewModel::selectToday) },
-        selectedDate = selectedDate, onSelectDate = appViewModel::selectDate, onToday = appViewModel::selectToday,
+        todayContent = { TodayRoute(todayViewModel, appViewModel::selectDate, appViewModel::selectToday, { appViewModel.select(Destination.Explore) }) },
+        exploreContent = { com.focusbuddy.ui.explore.ExploreRoute(exploreViewModel, todayViewModel, appViewModel::selectDate, appViewModel::selectToday) },
         showMascot = uiState.showMascot, onMascotVisibilityChange = appViewModel::setMascotVisible,
         animationsEnabled = uiState.animationsEnabled, onAnimationsChange = appViewModel::setAnimationsEnabled,
         settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryFailedPreference)
@@ -43,9 +40,7 @@ fun FocusBuddyContent(
     theme: ThemeMode,
     onThemeChange: (ThemeMode) -> Unit,
     todayContent: @Composable () -> Unit,
-    selectedDate: LocalDate,
-    onSelectDate: (LocalDate) -> Unit,
-    onToday: () -> Unit,
+    exploreContent: @Composable () -> Unit,
     showMascot: Boolean = true,
     onMascotVisibilityChange: (Boolean) -> Unit = {},
     animationsEnabled: Boolean = true,
@@ -98,8 +93,7 @@ fun FocusBuddyContent(
                     savedState.SaveableStateProvider(current.name) {
                         when (current) {
                             Destination.Today -> todayContent()
-                            Destination.Explore -> ExploreScreen(selectedDate = selectedDate, onSelectDate = onSelectDate,
-                                onToday = onToday, onOpenDay = { onNavigate(Destination.Today) })
+                            Destination.Explore -> exploreContent()
                             Destination.Focus -> FocusScreen()
                             Destination.Mascot -> MascotScreen()
                             Destination.Profile -> ProfileScreen(theme, onThemeChange, showMascot, onMascotVisibilityChange,

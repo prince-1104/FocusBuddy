@@ -8,15 +8,20 @@ import com.focusbuddy.ui.components.ConfirmationDialog
 import java.time.LocalDate
 
 @Composable
-fun TodayRoute(viewModel: TodayViewModel, onSelectDate: (LocalDate) -> Unit, onToday: () -> Unit) {
+fun TodayRoute(viewModel: TodayViewModel, onSelectDate: (LocalDate) -> Unit, onToday: () -> Unit, onExplore: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val actions = remember(viewModel, onSelectDate, onToday) {
+    val actions = remember(viewModel, onSelectDate, onToday, onExplore) {
         TodayActions(onSelectDate, onToday, viewModel::createTask, viewModel::editTask,
-            viewModel::completeTask, viewModel::retry, viewModel::dismissActionError)
+            viewModel::completeTask, viewModel::retry, viewModel::dismissActionError, onExplore)
     }
     TodayScreen(state, actions)
-    state.editor?.let { editor ->
-        TaskEditorSheet(editor, state.categories, viewModel::updateDraft, viewModel::saveEditor,
+    TaskEditorHost(viewModel, state.editor, state.categories)
+}
+
+@Composable
+fun TaskEditorHost(viewModel: TodayViewModel, editorState: TaskEditorState?, categories: List<com.focusbuddy.domain.model.Category>) {
+    editorState?.let { editor ->
+        TaskEditorSheet(editor, categories, viewModel::updateDraft, viewModel::saveEditor,
             { viewModel.dismissEditor() }, viewModel::requestDelete,
             { editor.taskId?.let { viewModel.editTask(it.toString()) } })
         if (editor.confirmDiscard) ConfirmationDialog("Discard these changes?", "Your unsaved changes will be lost.",

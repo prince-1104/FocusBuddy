@@ -63,7 +63,7 @@ private fun EmptyTodayPreview() {
 @Composable
 private fun ExplorePreview() {
     var selected by remember { mutableStateOf(PreviewData.date) }
-    FocusBuddyTheme { Surface { ExploreScreen(selected, { selected = it }, { selected = PreviewData.date }, {}, PreviewData.counts) } }
+    FocusBuddyTheme { Surface { ExploreScreen(previewExplore(selected), com.focusbuddy.ui.screens.ExploreActions({ selected = it }, { selected = PreviewData.date }, {}, {}, {}, {}, {})) } }
 }
 
 @Preview(name = "Focus", widthDp = 390, heightDp = 900)
@@ -92,7 +92,7 @@ private fun NavigationPreview() {
     FocusBuddyTheme(mode) {
         FocusBuddyContent(destination, { destination = it }, mode, { mode = it },
             todayContent = { TodayScreen(PreviewData.today.copy(selectedDate = selected), PreviewActions.copy(selectDate = { selected = it }, goToday = { selected = PreviewData.date })) },
-            selectedDate = selected, onSelectDate = { selected = it }, onToday = { selected = PreviewData.date })
+            exploreContent = { ExploreScreen(previewExplore(selected), ExploreActions({ selected = it }, { selected = PreviewData.date }, {}, {}, {}, {}, {})) })
     }
 }
 
@@ -144,4 +144,12 @@ private fun SheetPreview() {
             PrimaryButton("Sounds good", {})
         }
     }
+}
+
+private fun previewExplore(selected: LocalDate): com.focusbuddy.ui.explore.ExploreState {
+    val zone = java.time.ZoneId.of("Asia/Kolkata")
+    val task = com.focusbuddy.domain.model.Task(title = "A quiet moment to plan", scheduledDate = PreviewData.date)
+    val reminder = com.focusbuddy.domain.model.Reminder(title = "Step outside", triggerAt = PreviewData.date.atTime(16, 0).atZone(zone).toInstant())
+    return com.focusbuddy.ui.explore.ExploreState(selected = selected, today = PreviewData.date,
+        snapshot = com.focusbuddy.domain.calendar.calendarSnapshot(listOf(task), listOf(reminder), emptyList(), java.time.YearMonth.from(selected), zone), loading = false)
 }

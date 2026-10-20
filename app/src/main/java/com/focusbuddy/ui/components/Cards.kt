@@ -31,6 +31,7 @@ data class TaskCardData(
     val categoryColor: Long? = null,
     val reminderCount: Int = 0,
     val overdue: Boolean = false,
+    val series: Boolean = false,
 )
 
 data class ReminderCardData(val title: String, val schedule: String, val category: String, val id: String = "$title-$schedule")
@@ -47,15 +48,15 @@ fun SecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Mod
 
 @Composable
 fun BuddyCard(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null, border: BorderStroke? = null,
-    enabled: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+    enabled: Boolean = true, contentPadding: androidx.compose.ui.unit.Dp = 20.dp, content: @Composable ColumnScope.() -> Unit) {
     val colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     val elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     if (onClick == null) Card(modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large,
         colors = colors, elevation = elevation, border = border) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     } else Card(onClick, modifier.fillMaxWidth(), enabled = enabled, shape = MaterialTheme.shapes.large,
         colors = colors, elevation = elevation, border = border) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+        Column(Modifier.padding(contentPadding), verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
     }
 }
 
@@ -113,13 +114,14 @@ fun TaskCard(task: TaskCardData, onCompletionChange: ((Boolean) -> Unit)?, modif
         Row(verticalAlignment = Alignment.Top) {
             if (busy) Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(Modifier.size(24.dp).semantics { contentDescription = "Updating ${task.title}" }, strokeWidth = 2.dp)
-            } else CompletionControl(task.completed, task.title, onCompletionChange)
+            } else CompletionControl(task.completed, task.title + if (task.series) " (entire recurring series)" else "", onCompletionChange)
             Column(Modifier.weight(1f).padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(task.title, style = MaterialTheme.typography.titleMedium,
                     textDecoration = if (task.completed) TextDecoration.LineThrough else null)
                 Text(task.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (task.category != null) CategoryBadge(task.category, task.tone, color = task.categoryColor)
                 PriorityIndicator(task.priority)
+                if (task.series) Text("Repeats · completion applies to series", style = MaterialTheme.typography.labelSmall)
                 if (task.overdue) Text("Overdue", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
                 if (task.completed) Text("Completed", style = MaterialTheme.typography.labelMedium)
                 if (task.reminderCount > 0) Text(

@@ -94,6 +94,7 @@ data class MascotSettings(
     val animationsEnabled: Boolean = true,
     val soundEnabled: Boolean = false,
     val showMascot: Boolean = true,
+    val weekStart: java.time.DayOfWeek? = null,
 ) {
     init {
         require(selectedMascot.isNotBlank())

@@ -18,7 +18,7 @@ installation exists elsewhere on this machine.
 
 - One `app` module, namespace and application ID `com.focusbuddy`.
 - Minimum Android 8.0 (API 26), compile/target API 36, Java/JVM 17.
-  API 26 gives native java.time support for the future calendar.
+  API 26 gives native java.time support for calendar calculations.
 - Today opens by default. Today, Explore, Focus, Mascot, and Profile have screen
   scaffolds with bottom navigation on phones and a navigation rail on wider screens.
   Destination state uses a ViewModel, StateFlow, lifecycle-aware collection, and
@@ -27,9 +27,11 @@ installation exists elsewhere on this machine.
   cards, scalable type, subtle elevation, and short navigation/progress animations.
   Light, dark, and device theme modes are selectable in Profile and saved locally.
   System bar icon contrast follows the selected appearance.
-- Explore has a custom, locale-aware full-month layout and selected-day agenda
-  placeholder. Date selection and month browsing work. Independent task and
-  reminder-alert counts are supported; unavailable counts show a dash, not zero.
+- Explore has a custom full-month calendar and chronological selected-day agenda,
+  backed by observable Room data and domain recurrence expansion. Each date has
+  independent task and bell-alert counts, with zero indicators hidden. Week start
+  follows the device locale or an explicit DataStore preference. Today and Explore
+  share date selection and task creation/editing. See [Explore](docs/explore.md).
 - Reusable buttons, task/reminder cards, category/priority/completion controls,
   horizontal date selector, progress, mascot/empty states, loading/error feedback,
   bottom sheet, and confirmation dialog live in `ui/components`.
@@ -44,9 +46,8 @@ installation exists elsewhere on this machine.
   transactional repositories. DataStore stores mascot/appearance preferences and
   migrates the previous theme preference. See [offline persistence](docs/persistence.md)
   for APIs, migration policy, calendar semantics, tests, and limitations.
-- Today reads persisted records; other feature screens remain scaffolds. No
-  production samples seed the database. Android notification delivery and
-  recurrence execution remain deferred.
+- Today and Explore read persisted records; Focus and Mascot remain scaffolds. No
+  production samples seed the database. Android notification delivery remains deferred.
 
 ## Structure and boundaries
 
@@ -111,11 +112,8 @@ DAOs. Keep the single module until there is a concrete reason to split it.
    queries, and constructor injection. Verify persistence across process restarts.
 3. Build a Today vertical slice: create/edit/complete tasks with durable storage,
    ViewModel state, and the existing task cards and empty/error components.
-4. Connect Explore's custom full-month grid and selected-day agenda. Every date
-   must expose independent taskCount and reminderAlertCount values, including
-   explicit zero counts. Count reminder records separately from tasks; do not
-   infer reminder counts from task totals. Define timezone boundaries and count
-   semantics before writing aggregate queries. Avoid a Google Calendar layout.
+4. Completed: connect Explore's custom full-month grid and selected-day agenda,
+   separate task/alert occurrence counts, week-start preferences, and shared dates.
 5. Add Android reminder scheduling and notifications, permission handling,
    rescheduling after reboot/timezone changes, and reminder cancellation.
 6. Verify database migrations, month boundaries/leap years, locale/timezone

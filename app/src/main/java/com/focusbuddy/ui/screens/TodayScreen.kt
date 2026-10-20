@@ -26,6 +26,7 @@ data class TodayActions(
     val completeTask: (String, Boolean) -> Unit,
     val retry: () -> Unit,
     val dismissError: () -> Unit,
+    val openExplore: () -> Unit = {},
 )
 
 @Composable
@@ -52,6 +53,7 @@ fun TodayScreen(state: TodayUiState, actions: TodayActions) {
                 item("dates") {
                     HorizontalDateSelector(state.dateChoices, state.selectedDate, actions.selectDate,
                         counts = counts, animationsEnabled = state.animationsEnabled)
+                    TextButton(actions.openExplore) { Text("Open month and agenda") }
                 }
                 when {
                     state.isLoading -> item("loading") { LoadingState("Loading your day") }

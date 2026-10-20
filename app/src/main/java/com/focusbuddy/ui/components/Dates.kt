@@ -63,11 +63,10 @@ fun HorizontalDateSelector(dates: List<LocalDate>, selected: LocalDate, onSelect
 
 @Composable
 fun MonthCalendar(month: YearMonth, selected: LocalDate, counts: Map<LocalDate, DayCounts>,
-    onSelect: (LocalDate) -> Unit, modifier: Modifier = Modifier) {
+    onSelect: (LocalDate) -> Unit, modifier: Modifier = Modifier,
+    today: LocalDate = LocalDate.now(), firstDay: java.time.DayOfWeek = WeekFields.of(Locale.getDefault()).firstDayOfWeek) {
     val locale = Locale.getDefault()
-    val firstDay = WeekFields.of(locale).firstDayOfWeek
-    val offset = (month.atDay(1).dayOfWeek.value - firstDay.value + 7) % 7
-    val cellCount = ((offset + month.lengthOfMonth() + 6) / 7) * 7
+    val cells = com.focusbuddy.domain.calendar.monthCells(month, firstDay)
     Column(modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(Modifier.fillMaxWidth()) {
             repeat(7) { index ->
@@ -79,25 +78,26 @@ fun MonthCalendar(month: YearMonth, selected: LocalDate, counts: Map<LocalDate, 
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
             }
         }
-        (0 until cellCount).chunked(7).forEach { week ->
+        cells.chunked(7).forEach { week ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                week.forEach { cell ->
-                    val day = cell - offset + 1
-                    if (day !in 1..month.lengthOfMonth()) {
+                week.forEach { date ->
+                    if (date == null) {
                         Spacer(Modifier.weight(1f))
                     } else {
-                        val date = month.atDay(day)
+                        val day = date.dayOfMonth
                         val summary = counts[date]
                         val active = date == selected
                         val description = buildString {
                             append(date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)))
+                            if (date == today) append(", today")
                             append(if (summary == null) ", task and reminder alert counts unavailable"
                                 else ", ${summary.tasks} tasks, ${summary.reminderAlerts} reminder alerts")
                         }
                         Surface(Modifier.weight(1f), shape = MaterialTheme.shapes.small,
-                            color = if (active) MaterialTheme.colorScheme.primaryContainer
+                            border = if (date == today) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+                            color = if (active) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.surfaceContainerLow,
-                            contentColor = if (active) MaterialTheme.colorScheme.onPrimaryContainer
+                            contentColor = if (active) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSurface) {
                             Column(Modifier.selectable(active, role = Role.Tab, onClick = { onSelect(date) })
                                 .clearAndSetSemantics {
@@ -105,17 +105,39 @@ fun MonthCalendar(month: YearMonth, selected: LocalDate, counts: Map<LocalDate, 
                                     this.selected = active
                                     role = Role.Tab
                                     onClick(label = "Select date") { onSelect(date); true }
-                                }.heightIn(min = 90.dp).padding(vertical = 10.dp),
+                                }.heightIn(min = 82.dp).padding(vertical = 10.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("$day", style = MaterialTheme.typography.labelLarge)
-                                Text("T ${summary?.tasks ?: "—"}", style = MaterialTheme.typography.labelSmall)
-                                Text("R ${summary?.reminderAlerts ?: "—"}", style = MaterialTheme.typography.labelSmall)
+                                Text("$day", style = MaterialTheme.typography.labelLarge,
+                                    textDecoration = if (date == today) androidx.compose.ui.text.style.TextDecoration.Underline else null)
+                                if (summary != null && summary.tasks > 0) Text(if (summary.tasks > 99) "99+" else "${summary.tasks}", style = MaterialTheme.typography.labelSmall)
+                                if (summary != null && summary.reminderAlerts > 0) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    BellIcon(Modifier.size(10.dp))
+                                    Text(if (summary.reminderAlerts > 99) "99+" else "${summary.reminderAlerts}", style = MaterialTheme.typography.labelSmall)
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BellIcon(modifier: Modifier = Modifier) {
+    val ink = LocalContentColor.current
+    androidx.compose.foundation.Canvas(modifier) {
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(size.width * .18f, size.height * .75f)
+            lineTo(size.width * .28f, size.height * .6f)
+            lineTo(size.width * .28f, size.height * .35f)
+            cubicTo(size.width * .28f, 0f, size.width * .72f, 0f, size.width * .72f, size.height * .35f)
+            lineTo(size.width * .72f, size.height * .6f)
+            lineTo(size.width * .82f, size.height * .75f)
+            close()
+        }
+        drawPath(path, ink, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2.dp.toPx()))
+        drawCircle(ink, size.width * .09f, androidx.compose.ui.geometry.Offset(size.width * .5f, size.height * .94f))
     }
 }

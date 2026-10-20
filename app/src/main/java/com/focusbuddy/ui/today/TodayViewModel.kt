@@ -24,6 +24,7 @@ class TodayViewModel(
     private val pending = MutableStateFlow<Set<String>>(emptySet())
     private val actionError = MutableStateFlow<String?>(null)
     private val editor = MutableStateFlow<TaskEditorState?>(null)
+    val editorState = editor.asStateFlow()
     private var editorJob: Job? = null
     private val saveTask = SaveTask(tasks)
 
@@ -69,7 +70,7 @@ class TodayViewModel(
                 val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(zone())
                 val draft = TaskDraft(task.title, task.description.orEmpty(), task.scheduledDate.toString(), task.allDay,
                     task.startAt?.let(formatter::format).orEmpty(), task.endAt?.let(formatter::format).orEmpty(), task.priority, task.categoryId)
-                editor.update { current -> if (current?.session == opening.session) current.copy(draft = draft, original = draft, loading = false) else current }
+                editor.update { current -> if (current?.session == opening.session) current.copy(draft = draft, original = draft, loading = false, recurrenceRule = task.recurrenceRule) else current }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) {
                 editor.update { current -> if (current?.session == opening.session) current.copy(loading = false, loadError = "This task couldn't be opened. Please try again.") else current }

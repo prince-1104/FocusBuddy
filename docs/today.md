@@ -46,10 +46,11 @@ task identity when groups change. Preview samples remain in the debug source set
 ## Scope and verification
 
 This phase does not implement OS notification delivery, reminder creation UI,
-recurrence expansion, overnight task times, category management, a running focus
+overnight task times, category management, a running focus
 timer, or mascot customization. Attached enabled reminder records are displayed as
-such; displaying a reminder does not claim an OS alarm was scheduled. Explore still
-has a month/count scaffold and opens Today for the full daily agenda.
+such; displaying a reminder does not claim an OS alarm was scheduled. Explore now provides its own full month and agenda. Both screens use the domain
+occurrence projection; recurring task edits and completion apply to the series.
+The task rows identify this explicitly. See [Explore](explore.md).
 
 Dashboard tests exercise real Room repositories through the ViewModel for empty
 state, progress, persistent completion/reopening, overdue carryover, selected-date

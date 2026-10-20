@@ -70,4 +70,18 @@ class PreferencesRepositoryTest {
         assertEquals(ThemeMode.Light, newRepository(legacyName).settings.first().theme)
         legacy.edit().clear().commit()
     }
+
+    @Test fun weekStartSurvivesRecreationAndPreservesAppearance() = runTest {
+        val repository = newRepository()
+        repository.setTheme(ThemeMode.Dark)
+        repository.setWeekStart(java.time.DayOfWeek.SATURDAY)
+        scope.coroutineContext.job.cancelAndJoin()
+        scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val reopened = newRepository()
+        assertEquals(java.time.DayOfWeek.SATURDAY, reopened.settings.first().weekStart)
+        assertEquals(ThemeMode.Dark, reopened.settings.first().theme)
+        reopened.setWeekStart(null)
+        assertNull(reopened.settings.first().weekStart)
+        assertEquals(ThemeMode.Dark, reopened.settings.first().theme)
+    }
 }

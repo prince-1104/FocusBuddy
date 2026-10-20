@@ -17,6 +17,7 @@ internal val Context.focusBuddyPreferences by preferencesDataStore(
 
 class DataStorePreferencesRepository(private val store: DataStore<Preferences>) : PreferencesRepository {
     private object Keys {
+        val weekStart = intPreferencesKey("week_start")
         val theme = stringPreferencesKey("theme_mode")
         val mascot = stringPreferencesKey("selected_mascot")
         val personality = stringPreferencesKey("personality")
@@ -41,15 +42,18 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
             animationsEnabled = preferences[Keys.animations] ?: defaults.animationsEnabled,
             soundEnabled = preferences[Keys.sound] ?: defaults.soundEnabled,
             showMascot = preferences[Keys.visible] ?: defaults.showMascot,
+            weekStart = preferences[Keys.weekStart]?.takeIf { it in 1..7 }?.let(java.time.DayOfWeek::of),
         )
     }
 
+    override suspend fun setWeekStart(day: java.time.DayOfWeek?) { store.edit { it[Keys.weekStart] = day?.value ?: 0 } }
     override suspend fun setTheme(mode: ThemeMode) { store.edit { it[Keys.theme] = mode.name } }
     override suspend fun setMascotVisible(visible: Boolean) { store.edit { it[Keys.visible] = visible } }
     override suspend fun setAnimationsEnabled(enabled: Boolean) { store.edit { it[Keys.animations] = enabled } }
 
     override suspend fun setSettings(settings: MascotSettings) {
         store.edit {
+            it[Keys.weekStart] = settings.weekStart?.value ?: 0
             it[Keys.theme] = settings.theme.name
             it[Keys.mascot] = settings.selectedMascot
             it[Keys.personality] = settings.personality.name

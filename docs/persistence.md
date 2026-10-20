@@ -78,10 +78,10 @@ and reacts to the protected timezone-change broadcast, restarting the month quer
 without requiring a database write. Task dates remain unchanged when the device
 timezone changes; reminder dates can move.
 
-Recurrence rules are stored as nonblank strings intended for RFC 5545 RRULEs. No
-rule parser, occurrence expansion, or recurring-task materialization is implemented
-in this phase. Counts describe stored records, not projected future recurrences.
-Future recurrence processing belongs in domain services, never DAOs or composables.
+Recurrence rules remain stored on their series records. The domain calendar engine
+now projects date-based daily, weekly, monthly, and yearly occurrences for visible
+ranges; no generated rows or seeded data are written. See [Explore](explore.md) for
+supported rule fields, timezone policies, series semantics, and limitations.
 
 ## Schema and migrations
 
@@ -124,8 +124,8 @@ test reports, and lint reports as `persistence-verification` artifacts.
 
 File close/reopen tests simulate repository/process recreation; they do not replace
 a physical device reboot or power-loss test. Actual notification delivery, OS alarm
-cancellation/rescheduling, boot recovery, permission handling, and recurrence
-execution are not implemented here. There are no previously scheduled FocusBuddy
+cancellation/rescheduling, boot recovery, permission handling, and delivery reconciliation
+are not implemented here. There are no previously scheduled FocusBuddy
 alarms in the UI foundation. When delivery is added it must reconcile persisted
 enabled state after reboot and re-check that state before delivering an alert.
 Sound URI access permissions will also need to be persisted when a sound picker is

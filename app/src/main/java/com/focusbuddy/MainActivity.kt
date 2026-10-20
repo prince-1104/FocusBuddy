@@ -34,6 +34,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val exploreViewModel: com.focusbuddy.ui.explore.ExploreViewModel by viewModels {
+        viewModelFactory { initializer {
+            val container = (application as FocusBuddyApplication).container
+            com.focusbuddy.ui.explore.ExploreViewModel(appViewModel.selectedDate, container.calendar, container.preferences, container.reminders,
+                com.focusbuddy.domain.time.SystemMomentSource(java.time.Clock.systemUTC(), com.focusbuddy.data.time.DeviceTimeZoneSource(application)))
+        } }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -46,7 +54,7 @@ class MainActivity : ComponentActivity() {
                     else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
             }
-            FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel, todayViewModel) }
+            FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel, todayViewModel, exploreViewModel) }
         }
     }
 }

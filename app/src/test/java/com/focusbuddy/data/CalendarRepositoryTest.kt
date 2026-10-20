@@ -99,4 +99,42 @@ class CalendarRepositoryTest {
         val fall = MonthWindow.of(YearMonth.of(2026, 11), zones.value)
         assertEquals(721, Duration.between(fall.start, fall.endExclusive).toHours())
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun recurrenceCountsRefreshAfterEditCompletionDeleteAndDisable() = runTest {
+        zones.value = ZoneOffset.UTC
+        val date = LocalDate.of(2026, 3, 1)
+        val task = tasks.create(Task(title = "Routine", scheduledDate = date, recurrenceRule = "FREQ=DAILY;COUNT=3"))
+        val attached = Reminder(taskId = task.id, triggerAt = Instant.parse("2026-03-02T10:00:00Z"), recurrenceRule = "FREQ=DAILY;COUNT=2")
+        val standalone = Reminder(title = "Standalone", triggerAt = Instant.parse("2026-03-02T12:00:00Z"))
+        reminders.create(attached); reminders.create(standalone)
+        val channel = calendar.observeSnapshot(YearMonth.from(date)).produceIn(backgroundScope)
+        suspend fun matching(predicate: (com.focusbuddy.domain.calendar.CalendarSnapshot) -> Boolean): com.focusbuddy.domain.calendar.CalendarSnapshot {
+            while (true) { val value = channel.receive(); if (predicate(value)) return value }
+        }
+        val initial = matching { it.tasks.size == 3 && it.alerts.size == 3 }
+        assertEquals(2, initial.days[1].reminderAlertCount)
+        tasks.update(task.copy(recurrenceRule = "FREQ=DAILY;COUNT=2"))
+        matching { it.tasks.size == 2 }
+        reminders.update(standalone.copy(triggerAt = Instant.parse("2026-03-04T12:00:00Z")))
+        matching { it.days[3].reminderAlertCount == 1 }
+        tasks.setCompleted(task.id, true)
+        matching { it.alerts.size == 1 && it.tasks.all { row -> row.task.completed } }
+        reminders.disable(standalone.id)
+        matching { it.alerts.isEmpty() }
+        tasks.delete(task.id)
+        matching { it.tasks.isEmpty() }
+    }
+
+    @Test fun todayAndExploreAgreeForSelectedRecurringDay() = runTest {
+        val selected = LocalDate.of(2026, 3, 8)
+        val task = tasks.create(Task(title = "Weekly", scheduledDate = selected.minusWeeks(2), recurrenceRule = "FREQ=WEEKLY;COUNT=5"))
+        reminders.create(Reminder(title = "Daily", triggerAt = selected.minusDays(2).atTime(10, 0).atZone(zones.value).toInstant(), recurrenceRule = "FREQ=DAILY;COUNT=4"))
+        val month = calendar.observeSnapshot(YearMonth.from(selected)).first()
+        val day = RoomAgendaRepository(database).observe(selected, selected, zones.value).first()
+        assertEquals(month.days.first { it.date == selected }, day.days.first { it.date == selected })
+        assertEquals(listOf(task.id), day.tasks.map { it.task.id })
+        assertEquals(selected, day.tasks.single().task.scheduledDate)
+        assertEquals(1, day.standaloneReminders.size)
+    }
 }

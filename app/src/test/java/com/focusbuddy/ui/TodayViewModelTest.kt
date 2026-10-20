@@ -173,9 +173,20 @@ class TodayViewModelTest {
         model.uiState.first { !it.isLoading && !it.showMascot && !it.animationsEnabled }
     }
 
+    @Test fun snoozedRecurringStandaloneAlertsUseDistinctOccurrenceKeys() = runTest(dispatcher) {
+        reminders.create(Reminder(title = "Daily pause", triggerAt = now.minusDays(1).toInstant(),
+            recurrenceRule = "FREQ=DAILY;COUNT=3", snoozedUntil = now.plusHours(1).toInstant()))
+        val model = model()
+        val state = model.uiState.first { !it.isLoading }
+        assertEquals(2, state.reminders.size)
+        assertEquals(2, state.reminders.map { it.id }.distinct().size)
+        assertEquals(2, state.days.first { it.date == date }.reminderAlertCount)
+    }
+
     private class TestPreferences : PreferencesRepository {
         private val state = MutableStateFlow(MascotSettings())
         override val settings = state.asStateFlow()
+        override suspend fun setWeekStart(day: java.time.DayOfWeek?) { state.value = state.value.copy(weekStart = day) }
         override suspend fun setTheme(mode: ThemeMode) { state.update { it.copy(theme = mode) } }
         override suspend fun setSettings(settings: MascotSettings) { state.value = settings }
         override suspend fun setMascotVisible(visible: Boolean) { state.update { it.copy(showMascot = visible) } }

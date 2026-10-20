@@ -16,6 +16,7 @@ data class TaskEditorState(
     val loadError: String? = null, val error: String? = null,
     val validation: Map<String, String> = emptyMap(),
     val confirmDiscard: Boolean = false, val confirmDelete: Boolean = false,
+    val recurrenceRule: String? = null,
 )
 
 data class TodayUiState(
@@ -49,10 +50,10 @@ internal fun Dashboard.uiState(): TodayUiState {
                     TaskPriority.Medium -> Priority.Medium
                     TaskPriority.High -> Priority.High
                 }, completed = card.task.completed, categoryColor = card.category?.color,
-                reminderCount = card.activeReminderCount, overdue = card.overdue)
+                reminderCount = card.activeReminderCount, series = card.task.recurrenceRule != null, overdue = card.overdue)
         }) },
         reminders = standaloneReminders.map { ReminderCardData(it.title.orEmpty(), time.format(it.effectiveTriggerAt),
-            "Standalone reminder", it.id.toString()) },
+            "Standalone reminder", "${it.id}:${it.effectiveTriggerAt}") },
         completed = completed, total = total, categories = categories, days = days,
         showMascot = settings.showMascot, animationsEnabled = settings.animationsEnabled)
 }

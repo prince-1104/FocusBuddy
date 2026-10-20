@@ -2,32 +2,27 @@ package com.focusbuddy.data.repository
 
 import androidx.room.withTransaction
 import com.focusbuddy.data.local.FocusBuddyDatabase
-import com.focusbuddy.domain.model.DaySummary
+import com.focusbuddy.domain.calendar.*
 import com.focusbuddy.domain.repository.CalendarRepository
-import com.focusbuddy.domain.time.MonthWindow
-import com.focusbuddy.domain.time.TimeZoneSource
+import com.focusbuddy.domain.time.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import java.time.YearMonth
 
 class RoomCalendarRepository(private val database: FocusBuddyDatabase, private val timeZones: TimeZoneSource) : CalendarRepository {
+    override fun observeMonth(month: YearMonth) = observeSnapshot(month).map { it.days }.distinctUntilChanged()
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun observeMonth(month: YearMonth) = timeZones.zones.distinctUntilChanged().flatMapLatest { zone ->
+    override fun observeSnapshot(month: YearMonth): Flow<CalendarSnapshot> = timeZones.zones.distinctUntilChanged().flatMapLatest { zone ->
         val window = MonthWindow.of(month, zone)
-        database.invalidationTracker.createFlow("tasks", "reminders").map {
-            database.withTransaction {
-                val tasks = database.tasks().counts(month.atDay(1), month.atEndOfMonth())
-                    .associate { row -> row.scheduledDate to row.count }
-                val alerts = database.reminders().enabledBetween(window.start, window.endExclusive)
-                    .groupingBy { row -> (row.snoozedUntil ?: row.triggerAt).atZone(zone).toLocalDate() }
-                    .eachCount()
-                (1..month.lengthOfMonth()).map { day ->
-                    val date = month.atDay(day)
-                    DaySummary(date, tasks[date] ?: 0, alerts[date] ?: 0)
-                }
+        database.invalidationTracker.createFlow("tasks", "reminders", "categories").map {
+            val records = database.withTransaction {
+                val reminders = database.reminders().calendarCandidates(window.start, window.endExclusive).map { it.model() }
+                val tasks = database.tasks().calendarCandidates(month.atDay(1), month.atEndOfMonth()).map { it.model() }
+                val missing = reminders.mapNotNull { it.taskId }.distinct() - tasks.map { it.id }.toSet()
+                Triple(tasks + database.tasks().getByIds(missing).map { it.model() }, reminders, database.categories().getAll().map { it.model() })
             }
+            calendarSnapshot(records.first, records.second, records.third, month, zone)
         }
-    }.distinctUntilChanged()
+    }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default)
 }

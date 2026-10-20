@@ -51,6 +51,8 @@ interface FocusSessionRepository {
 interface PreferencesRepository {
     val settings: Flow<MascotSettings>
     /** Atomic single-key change; preserves concurrent mascot preference updates. */
+    suspend fun setWeekStart(day: java.time.DayOfWeek?)
+    /** Atomic single-key appearance change. */
     suspend fun setTheme(mode: ThemeMode)
     /** Explicit replacement of all settings. */
     suspend fun setSettings(settings: MascotSettings)
@@ -59,6 +61,7 @@ interface PreferencesRepository {
 }
 
 interface CalendarRepository {
+    fun observeSnapshot(month: YearMonth): Flow<com.focusbuddy.domain.calendar.CalendarSnapshot>
     /** Emits a row for every date, including zeroes; responds to device timezone changes. */
     fun observeMonth(month: YearMonth): Flow<List<DaySummary>>
 }

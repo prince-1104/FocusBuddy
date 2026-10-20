@@ -89,6 +89,7 @@ class AppViewModelTest {
             if (failRead) { failRead = false; throw IOException("test read failure") }
             emitAll(state)
         }
+        override suspend fun setWeekStart(day: java.time.DayOfWeek?) { state.value = state.value.copy(weekStart = day) }
         override suspend fun setTheme(mode: ThemeMode) {
             if (failWrite) throw IOException("test write failure")
             state.value = state.value.copy(theme = mode)
