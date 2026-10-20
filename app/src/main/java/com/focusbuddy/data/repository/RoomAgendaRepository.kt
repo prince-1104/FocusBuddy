@@ -26,7 +26,7 @@ class RoomAgendaRepository(private val database: FocusBuddyDatabase) : AgendaRep
             }
             val snapshots = generateSequence(YearMonth.from(from)) { it.plusMonths(1) }
                 .takeWhile { it <= YearMonth.from(through) }
-                .map { calendarSnapshot(records.tasks, records.reminders, records.categories, it, zone) }.toList()
+                .map { calendarSnapshot(records.tasks, records.reminders, records.categories, it, zone, records.details.flatMap { details -> details.subtasks }) }.toList()
             val snapshot = snapshots.first { YearMonth.from(it.days.first().date) == YearMonth.from(selected) }
             val selectedTasks = snapshot.tasks.filter { it.date == selected }.map { occurrence ->
                 val details = records.details.first { it.task.id == occurrence.task.id }

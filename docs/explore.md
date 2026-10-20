@@ -2,9 +2,9 @@
 
 Explore reads the Room-backed CalendarRepository through ExploreViewModel. No
 runtime demonstration records or counts are generated. Constructor injection uses
-the existing application container; dependency versions and schema version 2 stay
-unchanged. Week-start preferences use an additive DataStore key, so no SQL
-migration is needed.
+the existing application container; dependency versions stay unchanged. The subsequent task-editor phase upgrades
+the database to version 3; see [task experience](task-experience.md). Week-start
+preferences use an additive DataStore key.
 
 ## Interaction and presentation
 
@@ -24,7 +24,7 @@ migration is needed.
   color, priority, completion, and reminder association remain visible.
 - Selected-day totals include completed and remaining tasks plus active alerts.
   Add opens the existing real task editor with the selected date. Task rows open
-  editing; repeating rows explicitly open the series editor. Reminder rows open a
+  details, with explicit editing of the series for repeating tasks. Reminder rows open a
   details sheet with actual occurrence time, task association, sound/vibration,
   snooze and recurrence information, and an explicit disable action (whole series
   for a recurring reminder). This is persisted and immediately updates counts.
@@ -60,8 +60,8 @@ local date expansion. Supported rule concepts are based on
 This is not a general iCalendar importer: sub-day frequencies, BYSETPOS,
 BYYEARDAY, BYWEEKNO, RDATE/EXDATE, and occurrence exceptions are not supported.
 Unsupported fields fail into the calendar error/retry state rather than producing
-plausible but wrong counts. Existing editors preserve recurrence rules; a recurrence
-creation/configuration UI is separate work. Edits, deletion, and completion operate
+plausible but wrong counts. The task/reminder editors now expose recurrence choices and a custom rule field;
+see [task experience](task-experience.md). Edits, deletion, and completion operate
 on the stored task series, not individual occurrences. Reopening a task does not
 restore disabled reminders.
 

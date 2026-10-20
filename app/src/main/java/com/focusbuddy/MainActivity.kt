@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 val container = (application as FocusBuddyApplication).container
-                TodayViewModel(appViewModel.selectedDate, container.observeDashboard, container.tasks, appViewModel::selectDate)
+                TodayViewModel(appViewModel.selectedDate, container.observeDashboard, container.tasks, appViewModel::selectDate, reminders = container.reminders)
             }
         }
     }

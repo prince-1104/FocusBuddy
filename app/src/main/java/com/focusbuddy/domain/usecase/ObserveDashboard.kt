@@ -30,7 +30,7 @@ class ObserveDashboard(
                 val deadline = task.endAt ?: task.startAt
                 val overdue = !task.completed && (task.scheduledDate < today ||
                     (task.scheduledDate == today && !task.allDay && deadline != null && deadline <= now.toInstant()))
-                DashboardTask(task, categories[task.categoryId], details.reminders.count { it.enabled }, overdue)
+                DashboardTask(task, categories[task.categoryId], details.reminders.count { it.enabled }, overdue, details.subtasks.count { it.completed }, details.subtasks.size)
             }
             fun section(card: DashboardTask) = when {
                 card.task.completed -> TaskSection.Completed

@@ -32,6 +32,7 @@ data class TaskCardData(
     val reminderCount: Int = 0,
     val overdue: Boolean = false,
     val series: Boolean = false,
+    val subtasksCompleted: Int = 0, val subtasksTotal: Int = 0,
 )
 
 data class ReminderCardData(val title: String, val schedule: String, val category: String, val id: String = "$title-$schedule")
@@ -121,6 +122,7 @@ fun TaskCard(task: TaskCardData, onCompletionChange: ((Boolean) -> Unit)?, modif
                 Text(task.detail, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (task.category != null) CategoryBadge(task.category, task.tone, color = task.categoryColor)
                 PriorityIndicator(task.priority)
+                if (task.subtasksTotal > 0) Text("${task.subtasksCompleted}/${task.subtasksTotal} small steps complete", style = MaterialTheme.typography.labelMedium)
                 if (task.series) Text("Repeats · completion applies to series", style = MaterialTheme.typography.labelSmall)
                 if (task.overdue) Text("Overdue", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelMedium)
                 if (task.completed) Text("Completed", style = MaterialTheme.typography.labelMedium)
@@ -133,8 +135,8 @@ fun TaskCard(task: TaskCardData, onCompletionChange: ((Boolean) -> Unit)?, modif
 }
 
 @Composable
-fun ReminderCard(reminder: ReminderCardData, modifier: Modifier = Modifier) {
-    BuddyCard(modifier.semantics(mergeDescendants = true) {}) {
+fun ReminderCard(reminder: ReminderCardData, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    BuddyCard(modifier.semantics(mergeDescendants = true) {}, onClick = onClick) {
         Text("Reminder", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         Text(reminder.title, style = MaterialTheme.typography.titleMedium)
         Text(reminder.schedule, style = MaterialTheme.typography.bodyMedium)

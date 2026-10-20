@@ -13,8 +13,8 @@ import java.time.format.*
 fun ExploreRoute(viewModel: ExploreViewModel, editorModel: TodayViewModel, select: (LocalDate) -> Unit, today: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val editor by editorModel.editorState.collectAsStateWithLifecycle()
-    ExploreScreen(state, ExploreActions(select, today, editorModel::createTask, editorModel::editTask,
-        viewModel::openReminder, { viewModel.setWeekStart(it) }, viewModel::retry))
+    ExploreScreen(state, ExploreActions(select, today, editorModel::createTask, editorModel::openTask,
+        viewModel::openReminder, { viewModel.setWeekStart(it) }, viewModel::retry, editorModel::createReminder, editorModel::openReminderLibrary))
     TaskEditorHost(editorModel, editor, state.snapshot?.categories.orEmpty())
     if (state.detailKey != null) {
         val alert = state.snapshot?.alerts?.firstOrNull { it.key() == state.detailKey }
@@ -27,7 +27,8 @@ fun ExploreRoute(viewModel: ExploreViewModel, editorModel: TodayViewModel, selec
                 Text("Sound: ${if (alert.reminder.soundEnabled) "On" else "Off"} / Vibration: ${if (alert.reminder.vibrationEnabled) "On" else "Off"}")
                 alert.reminder.recurrenceRule?.let { Text("Repeats: $it") }
                 if (alert.reminder.snoozedUntil == alert.trigger) Text("Snoozed alert")
-                alert.task?.let { task -> SecondaryButton("Open task", { viewModel.closeReminder(); editorModel.editTask(task.id.toString()) }, enabled = !state.disabling) }
+                alert.task?.let { task -> SecondaryButton("Open task", { viewModel.closeReminder(); editorModel.openTask(task.id.toString()) }, enabled = !state.disabling) }
+                if (alert.task == null) SecondaryButton("Edit reminder", { viewModel.closeReminder(); editorModel.editReminder(alert.reminder.id.toString()) }, enabled = !state.disabling)
                 SecondaryButton(if (alert.reminder.recurrenceRule != null) "Disable all alerts in this series" else "Disable reminder",
                     viewModel::disableReminder, enabled = !state.disabling)
             }

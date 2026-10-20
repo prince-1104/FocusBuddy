@@ -49,7 +49,7 @@ class TodayViewModelTest {
 
     private fun TestScope.model(taskRepository: TaskRepository = tasks, agenda: AgendaRepository = RoomAgendaRepository(database)): TodayViewModel {
         val model = TodayViewModel(selected, ObserveDashboard(agenda, preferences, moments), taskRepository,
-            { selected.value = it }, { ZoneOffset.UTC })
+            { selected.value = it }, { ZoneOffset.UTC }, reminders, Clock.fixed(now.toInstant(), ZoneOffset.UTC))
         models += model
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { model.uiState.collect() }
         return model

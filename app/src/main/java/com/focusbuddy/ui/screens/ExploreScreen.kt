@@ -21,6 +21,7 @@ data class ExploreActions(
     val select: (LocalDate) -> Unit, val today: () -> Unit, val add: () -> Unit,
     val edit: (String) -> Unit, val reminder: (String) -> Unit,
     val weekStart: (DayOfWeek?) -> Unit, val retry: () -> Unit,
+    val addReminder: () -> Unit = {}, val manageReminders: () -> Unit = {},
 )
 
 @Composable
@@ -79,6 +80,8 @@ fun ExploreScreen(state: ExploreState, actions: ExploreActions) {
                         Text("${state.completed} completed / ${state.tasks.size - state.completed} remaining")
                         DailyProgress(state.completed, state.tasks.size)
                         PrimaryButton("+ Add task", actions.add, Modifier.fillMaxWidth())
+                        TextButton(actions.addReminder) { Text("+ Standalone reminder") }
+                        TextButton(actions.manageReminders) { Text("Manage reminders") }
                     }
                 }
                 if (agenda.isEmpty()) item { EmptyState("A little breathing room", "No tasks or reminder alerts here. Make room for something that matters.") }
@@ -89,7 +92,7 @@ fun ExploreScreen(state: ExploreState, actions: ExploreActions) {
                         TaskCard(TaskCardData(task.id.toString(), task.title,
                             (occurrence.start?.let(time::format) ?: "All day") + if (task.recurrenceRule != null) " / Repeats / edit series" else "",
                             category?.name, CategoryTone.Blue, Priority.valueOf(task.priority.name), task.completed,
-                            categoryColor = category?.color), null, onClick = { actions.edit(task.id.toString()) })
+                            categoryColor = category?.color, subtasksCompleted = occurrence.subtasksCompleted, subtasksTotal = occurrence.subtasksTotal), null, onClick = { actions.edit(task.id.toString()) })
                     }
                     (row as? CalendarEntry.ReminderAlert)?.occurrence?.let { alert ->
                         BuddyCard(onClick = { actions.reminder(alert.key()) }) {

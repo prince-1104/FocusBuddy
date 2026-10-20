@@ -85,8 +85,9 @@ supported rule fields, timezone policies, series semantics, and limitations.
 
 ## Schema and migrations
 
-There was **no shipped Room database** before this phase. New installations create
-schema version 2 directly. `app/schemas/v1.sql` is an explicit, pre-release version-1
+There was **no shipped Room database** before this phase. New installations now create
+schema version 3 directly. The task-editor phase adds an additive v2-to-v3 migration
+for notes and relative reminder metadata; see [task experience](task-experience.md). `app/schemas/v1.sql` is an explicit, pre-release version-1
 baseline; `MIGRATION_1_2` adds nullable `reminders.snoozedUntil` and its enabled/snooze
 index without modifying existing records. Migration tests open a real version-1
 SQLite file, apply the migration through Room, and exercise Room's complete target

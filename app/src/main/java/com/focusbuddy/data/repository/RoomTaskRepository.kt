@@ -10,7 +10,7 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
-class RoomTaskRepository(private val database: FocusBuddyDatabase, private val clock: Clock) : TaskRepository {
+class RoomTaskRepository(private val database: FocusBuddyDatabase, private val clock: Clock, private val zone: () -> java.time.ZoneId = java.time.ZoneId::systemDefault) : TaskRepository {
     private val tasks = database.tasks()
     private val reminders = database.reminders()
     private val subtasks = database.subtasks()
@@ -34,8 +34,38 @@ class RoomTaskRepository(private val database: FocusBuddyDatabase, private val c
         val now = maxOf(previous.updatedAt, clock.instant().truncatedTo(ChronoUnit.MILLIS))
         val record = task.copy(createdAt = previous.createdAt, updatedAt = now)
         check(tasks.update(record.entity()) == 1)
+        reminders.forTask(record.id).forEach { entity ->
+            val alert = entity.model()
+            val trigger = alert.offsetMinutes?.let { offset ->
+                (record.startAt ?: record.scheduledDate.atTime(9, 0).atZone(zone()).toInstant()).minusSeconds(offset * 60L)
+            } ?: alert.triggerAt
+            reminders.update(alert.copy(triggerAt = trigger,
+                recurrenceRule = if (alert.followTaskRecurrence) record.recurrenceRule else alert.recurrenceRule,
+                snoozedUntil = alert.snoozedUntil?.takeIf { trigger == alert.triggerAt }).entity())
+        }
         if (record.completed) reminders.disableForTask(record.id)
         record
+    }
+
+    override suspend fun updateAggregate(id: UUID, content: TaskContent, notes: String?, recurrenceRule: String?, reminders: List<Reminder>, subtasks: List<Subtask>): Task = database.withTransaction {
+        val previous = requireNotNull(tasks.get(id)) { "Task no longer exists" }.model()
+        require(reminders.all { it.taskId == id } && subtasks.all { it.taskId == id })
+        require(reminders.map { it.id }.distinct().size == reminders.size)
+        require(subtasks.map { it.id }.distinct().size == subtasks.size)
+        val record = update(previous.copy(title = content.title, description = content.description,
+            scheduledDate = content.scheduledDate, startAt = content.startAt, endAt = content.endAt,
+            allDay = content.allDay, priority = content.priority, categoryId = content.categoryId,
+            notes = notes, recurrenceRule = recurrenceRule))
+        this.reminders.deleteForTask(id)
+        this.reminders.insertAll(reminders.map { (if (record.completed) it.copy(enabled = false, snoozedUntil = null) else it).entity() })
+        this.subtasks.deleteForTask(id)
+        this.subtasks.insertAll(subtasks.map { it.entity() })
+        record
+    }
+    override suspend fun setSubtaskCompleted(taskId: UUID, id: UUID, completed: Boolean) = database.withTransaction {
+        val parent = requireNotNull(tasks.get(taskId))
+        check(subtasks.setCompleted(taskId, id, completed) == 1) { "Subtask no longer exists" }
+        check(tasks.update(parent.copy(updatedAt = maxOf(parent.updatedAt, clock.instant().truncatedTo(ChronoUnit.MILLIS)))) == 1)
     }
 
     override suspend fun get(id: UUID): TaskDetails? = tasks.details(id)?.model()

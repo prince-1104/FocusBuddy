@@ -11,6 +11,9 @@ interface TaskRepository {
     /** Atomic aggregate creation. All supplied children must belong to the new task. */
     suspend fun create(task: Task, reminders: List<Reminder> = emptyList(), subtasks: List<Subtask> = emptyList()): Task
     suspend fun update(task: Task): Task
+    /** Atomically replace edited content and children, preserving latest parent completion. */
+    suspend fun updateAggregate(id: UUID, content: TaskContent, notes: String?, recurrenceRule: String?, reminders: List<Reminder>, subtasks: List<Subtask>): Task
+    suspend fun setSubtaskCompleted(taskId: UUID, id: UUID, completed: Boolean)
     /** Edits content while preserving the latest completion state and recurrence metadata. */
     suspend fun updateContent(id: UUID, content: TaskContent): Task
     suspend fun get(id: UUID): TaskDetails?

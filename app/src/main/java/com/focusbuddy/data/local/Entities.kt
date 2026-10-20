@@ -28,7 +28,7 @@ data class TaskEntity(
     @PrimaryKey val id: UUID, val title: String, val description: String?, val scheduledDate: LocalDate,
     val startAt: Instant?, val endAt: Instant?, val allDay: Boolean, val priority: TaskPriority,
     val completed: Boolean, val categoryId: UUID?, val recurrenceRule: String?,
-    val createdAt: Instant, val updatedAt: Instant,
+    val createdAt: Instant, val updatedAt: Instant, val notes: String? = null,
 )
 
 @Entity(tableName = "reminders", foreignKeys = [ForeignKey(
@@ -39,6 +39,7 @@ data class ReminderEntity(
     @PrimaryKey val id: UUID, val taskId: UUID?, val title: String?, val description: String?,
     val triggerAt: Instant, val enabled: Boolean, val recurrenceRule: String?, val soundUri: String?,
     val soundEnabled: Boolean, val vibrationEnabled: Boolean, val snoozedUntil: Instant?,
+    val offsetMinutes: Int? = null, @ColumnInfo(defaultValue = "0") val followTaskRecurrence: Boolean = false,
 )
 
 @Entity(tableName = "subtasks", foreignKeys = [ForeignKey(

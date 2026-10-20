@@ -2,7 +2,9 @@ package com.focusbuddy.ui.today
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.focusbuddy.domain.model.TaskDraft
+import com.focusbuddy.domain.model.*
+import com.focusbuddy.domain.repository.ReminderRepository
+import java.time.*
 import com.focusbuddy.domain.repository.TaskRepository
 import com.focusbuddy.domain.usecase.*
 import kotlinx.coroutines.*
@@ -19,6 +21,8 @@ class TodayViewModel(
     private val tasks: TaskRepository,
     private val onSelectDate: (LocalDate) -> Unit,
     private val zone: () -> ZoneId = ZoneId::systemDefault,
+    private val reminders: ReminderRepository,
+    private val clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
     private val retry = MutableStateFlow(0)
     private val pending = MutableStateFlow<Set<String>>(emptySet())
@@ -26,7 +30,7 @@ class TodayViewModel(
     private val editor = MutableStateFlow<TaskEditorState?>(null)
     val editorState = editor.asStateFlow()
     private var editorJob: Job? = null
-    private val saveTask = SaveTask(tasks)
+    private val saveTask = SaveTask(tasks, clock)
 
     val uiState = combine(
         retry.flatMapLatest {
@@ -55,22 +59,28 @@ class TodayViewModel(
     }
 
     fun createTask() {
+        beginTask(selectedDates.value, null)
+    }
+
+    fun beginTask(date: LocalDate? = null, time: LocalTime? = null) {
+        if (editor.value != null) return
         editorJob?.cancel()
-        editor.value = TaskEditorState(draft = TaskDraft(date = selectedDates.value.toString()))
+        editor.value = TaskEditorState(draft = TaskDraft(date = (date ?: selectedDates.value).toString(),
+            allDay = time == null, startTime = time?.format(DateTimeFormatter.ofPattern("HH:mm")).orEmpty()))
     }
 
     fun editTask(id: String) {
+        if (editor.value?.busy == true) return
         editorJob?.cancel()
         val taskId = UUID.fromString(id)
         val opening = TaskEditorState(taskId = taskId, draft = TaskDraft(date = selectedDates.value.toString()), loading = true)
         editor.value = opening
         editorJob = viewModelScope.launch {
             try {
-                val task = requireNotNull(tasks.get(taskId)) { "Task no longer exists" }.task
-                val formatter = DateTimeFormatter.ofPattern("HH:mm").withZone(zone())
-                val draft = TaskDraft(task.title, task.description.orEmpty(), task.scheduledDate.toString(), task.allDay,
-                    task.startAt?.let(formatter::format).orEmpty(), task.endAt?.let(formatter::format).orEmpty(), task.priority, task.categoryId)
-                editor.update { current -> if (current?.session == opening.session) current.copy(draft = draft, original = draft, loading = false, recurrenceRule = task.recurrenceRule) else current }
+                val details = requireNotNull(tasks.get(taskId)) { "Task no longer exists" }
+                val task = details.task
+                val draft = details.toDraft(zone())
+                editor.update { current -> if (current?.session == opening.session) current.copy(draft = draft, original = draft, loading = false, recurrenceRule = task.recurrenceRule, taskCompleted = task.completed) else current }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) {
                 editor.update { current -> if (current?.session == opening.session) current.copy(loading = false, loadError = "This task couldn't be opened. Please try again.") else current }
@@ -116,4 +126,129 @@ class TodayViewModel(
             catch (_: Exception) { editor.update { it?.copy(busy = false, error = "Your task couldn't be deleted. Please try again.") } }
         }
     }
+
+    private val detailId = MutableStateFlow<UUID?>(null)
+    private val detailBusy = MutableStateFlow(false)
+    private val detailError = MutableStateFlow<String?>(null)
+    private val detailDelete = MutableStateFlow(false)
+    val taskDetailsState = combine(detailId.flatMapLatest { id ->
+        if (id == null) flowOf(null) else tasks.observe(id).map { TaskDetailsState(id, it) }
+            .onStart { emit(TaskDetailsState(id, loading = true)) }
+            .catch { emit(TaskDetailsState(id, error = "This task couldn't be loaded.")) }
+    }, detailBusy, detailError, detailDelete) { state, busy, error, delete ->
+        state?.copy(busy = busy, actionError = error, confirmDelete = delete)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun openTask(id: String) { detailError.value = null; detailDelete.value = false; detailId.value = UUID.fromString(id) }
+    fun closeTask() { if (!detailBusy.value) detailId.value = null }
+    fun editDetails() { val id = detailId.value ?: return; closeTask(); editTask(id.toString()) }
+    fun retryDetails() { val id = detailId.value ?: return; detailId.value = null; viewModelScope.launch { yield(); detailId.value = id } }
+    fun duplicateDetails() {
+        val details = taskDetailsState.value?.details ?: return
+        if (detailBusy.value) return
+        val draft = details.toDraft(zone()).let { it.copy(title = "Copy of ${it.title}",
+            subtasks = it.subtasks.map { child -> child.copy(id = UUID.randomUUID(), completed = false) },
+            alerts = it.alerts.map { alert -> alert.copy(id = UUID.randomUUID(), enabled = false, snoozedUntil = null, originalTrigger = null, originalEnabled = false) }) }
+        closeTask()
+        editor.value = TaskEditorState(draft = draft, original = draft, duplicated = true)
+    }
+    fun completeDetails() {
+        val details = taskDetailsState.value?.details ?: return
+        detailMutation { tasks.setCompleted(details.task.id, !details.task.completed) }
+    }
+    fun toggleSubtask(id: UUID, completed: Boolean) {
+        val parent = detailId.value ?: return
+        detailMutation { tasks.setSubtaskCompleted(parent, id, completed) }
+    }
+    fun requestDetailsDelete() { if (!detailBusy.value) detailDelete.value = true }
+    fun cancelDetailsDelete() { detailDelete.value = false }
+    fun deleteDetails() {
+        val id = detailId.value ?: return
+        detailDelete.value = false
+        detailMutation { tasks.delete(id); detailId.value = null }
+    }
+    private fun detailMutation(operation: suspend () -> Unit) {
+        if (detailBusy.value) return
+        detailBusy.value = true; detailError.value = null
+        viewModelScope.launch {
+            try { operation() }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { detailError.value = "The change couldn't be saved. Please try again." }
+            finally { detailBusy.value = false }
+        }
+    }
+
+    private val reminderEditor = MutableStateFlow<ReminderEditorState?>(null)
+    val reminderEditorState = reminderEditor.asStateFlow()
+    private var reminderJob: Job? = null
+    fun createReminder() { beginReminder(selectedDates.value, null) }
+    fun beginReminder(date: LocalDate? = null, time: LocalTime? = null) {
+        if (reminderEditor.value != null) return
+        reminderEditor.value = ReminderEditorState(draft = ReminderDraft(alert = AlertDraft(
+            date = (date ?: selectedDates.value).toString(), time = (time ?: LocalTime.of(9, 0)).format(DateTimeFormatter.ofPattern("HH:mm")))))
+    }
+    fun editReminder(id: String) {
+        if (reminderEditor.value?.busy == true) return
+        reminderJob?.cancel()
+        val opening = ReminderEditorState(id = UUID.fromString(id), draft = ReminderDraft(alert = AlertDraft()), loading = true)
+        reminderEditor.value = opening
+        reminderJob = viewModelScope.launch {
+            try {
+                val reminder = requireNotNull(reminders.get(opening.id!!))
+                require(reminder.taskId == null) { "Attached alerts are edited with their task" }
+                val draft = ReminderDraft(reminder.title.orEmpty(), reminder.description.orEmpty(), reminder.toDraft(zone()))
+                reminderEditor.update { if (it?.session == opening.session) it.copy(draft = draft, original = draft, loading = false) else it }
+            } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { reminderEditor.update { it?.copy(loading = false, loadError = "This reminder couldn't be opened.") } }
+        }
+    }
+    fun updateReminderDraft(draft: ReminderDraft) { reminderEditor.update { if (it?.busy == false) it.copy(draft = draft, error = null, validation = emptyMap()) else it } }
+    fun dismissReminder(force: Boolean = false) {
+        val state = reminderEditor.value ?: return
+        if (state.busy) return
+        if (!force && state.draft != state.original) reminderEditor.value = state.copy(confirmDiscard = true)
+        else { reminderJob?.cancel(); reminderEditor.value = null }
+    }
+    fun cancelReminderDiscard() { reminderEditor.update { it?.copy(confirmDiscard = false) } }
+    fun requestReminderDelete() { reminderEditor.update { if (it?.busy == false) it.copy(confirmDelete = true) else it } }
+    fun cancelReminderDelete() { reminderEditor.update { it?.copy(confirmDelete = false) } }
+    fun saveReminder() {
+        val current = reminderEditor.value ?: return
+        if (current.busy || current.loading || current.loadError != null) return
+        reminderEditor.value = current.copy(busy = true, validation = emptyMap(), error = null)
+        reminderJob = viewModelScope.launch {
+            try {
+                val record = EditorValidation.standalone(current.draft, zone(), clock.instant())
+                val repository = reminders
+                if (current.id == null) repository.create(record) else repository.update(record.copy(id = current.id))
+                reminderEditor.value = null
+                onSelectDate(record.effectiveTriggerAt.atZone(zone()).toLocalDate())
+            } catch (e: CancellationException) { throw e }
+            catch (e: DraftValidationException) { reminderEditor.update { it?.copy(busy = false, validation = mapOf(e.field to e.message)) } }
+            catch (_: Exception) { reminderEditor.update { it?.copy(busy = false, error = "Your reminder couldn't be saved. Please try again.") } }
+        }
+    }
+    fun deleteReminder() {
+        val state = reminderEditor.value ?: return
+        val id = state.id ?: return
+        if (state.busy) return
+        reminderEditor.value = state.copy(busy = true, confirmDelete = false)
+        reminderJob = viewModelScope.launch {
+            try { reminders.delete(id); reminderEditor.value = null }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { reminderEditor.update { it?.copy(busy = false, error = "This reminder couldn't be deleted.") } }
+        }
+    }
+
+    private val libraryOpen = MutableStateFlow(false)
+    private val libraryRetry = MutableStateFlow(0)
+    val reminderLibrary = combine(libraryOpen, libraryRetry) { open, _ -> open }.flatMapLatest { open ->
+        if (!open) flowOf(ReminderLibraryState()) else reminders.observeAll()
+            .map { ReminderLibraryState(open = true, reminders = it.filter { reminder -> reminder.taskId == null }) }
+            .onStart { emit(ReminderLibraryState(open = true, loading = true)) }
+            .catch { emit(ReminderLibraryState(open = true, error = "Your reminders couldn't be loaded.")) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ReminderLibraryState())
+    fun openReminderLibrary() { libraryOpen.value = true }
+    fun closeReminderLibrary() { libraryOpen.value = false }
+    fun retryReminderLibrary() { libraryRetry.value++ }
 }

@@ -17,8 +17,9 @@ class AppContainer(context: Context) {
     private val clock = Clock.systemUTC()
     private val database by lazy { FocusBuddyDatabase.create(appContext) }
     val preferences: PreferencesRepository by lazy { DataStorePreferencesRepository(appContext.focusBuddyPreferences) }
-    val tasks: TaskRepository by lazy { RoomTaskRepository(database, clock) }
-    val reminders: ReminderRepository by lazy { RoomReminderRepository(database, clock) }
+    val reminderScheduler = com.focusbuddy.domain.reminders.UnavailableReminderScheduler
+    val tasks: TaskRepository by lazy { SchedulingTaskRepository(RoomTaskRepository(database, clock), reminderScheduler) }
+    val reminders: ReminderRepository by lazy { SchedulingReminderRepository(RoomReminderRepository(database, clock), reminderScheduler) }
     val categories: CategoryRepository by lazy { RoomCategoryRepository(database) }
     val focusSessions: FocusSessionRepository by lazy { RoomFocusSessionRepository(database) }
     val calendar: CalendarRepository by lazy { RoomCalendarRepository(database, DeviceTimeZoneSource(appContext)) }

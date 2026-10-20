@@ -27,6 +27,7 @@ data class TodayActions(
     val retry: () -> Unit,
     val dismissError: () -> Unit,
     val openExplore: () -> Unit = {},
+    val addReminder: () -> Unit = {}, val editReminder: (String) -> Unit = {}, val manageReminders: () -> Unit = {},
 )
 
 @Composable
@@ -54,6 +55,8 @@ fun TodayScreen(state: TodayUiState, actions: TodayActions) {
                     HorizontalDateSelector(state.dateChoices, state.selectedDate, actions.selectDate,
                         counts = counts, animationsEnabled = state.animationsEnabled)
                     TextButton(actions.openExplore) { Text("Open month and agenda") }
+                    TextButton(actions.addReminder) { Text("+ Standalone reminder") }
+                    TextButton(actions.manageReminders) { Text("Manage reminders") }
                 }
                 when {
                     state.isLoading -> item("loading") { LoadingState("Loading your day") }
@@ -92,7 +95,7 @@ fun TodayScreen(state: TodayUiState, actions: TodayActions) {
                         }
                         if (state.reminders.isNotEmpty()) {
                             item("reminder-heading") { SectionTitle("Gentle reminders") }
-                            items(state.reminders, key = { "reminder-${it.id}" }, contentType = { "reminder" }) { ReminderCard(it) }
+                            items(state.reminders, key = { "reminder-${it.id}" }, contentType = { "reminder" }) { reminder -> ReminderCard(reminder, onClick = { actions.editReminder(reminder.id.substringBefore(':')) }) }
                         }
                     }
                 }

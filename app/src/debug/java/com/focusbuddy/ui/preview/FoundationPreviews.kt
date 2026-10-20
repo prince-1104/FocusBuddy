@@ -153,3 +153,25 @@ private fun previewExplore(selected: LocalDate): com.focusbuddy.ui.explore.Explo
     return com.focusbuddy.ui.explore.ExploreState(selected = selected, today = PreviewData.date,
         snapshot = com.focusbuddy.domain.calendar.calendarSnapshot(listOf(task), listOf(reminder), emptyList(), java.time.YearMonth.from(selected), zone), loading = false)
 }
+
+@Preview(name = "Standalone reminder editor", widthDp = 390, heightDp = 1000)
+@Preview(name = "Standalone reminder / dark / large text", widthDp = 320, heightDp = 1000, fontScale = 1.5f, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ReminderEditorPreview() {
+    var state by remember { mutableStateOf(com.focusbuddy.ui.today.ReminderEditorState(draft = com.focusbuddy.domain.model.ReminderDraft(
+        title = "A moment away from the screen", alert = com.focusbuddy.domain.model.AlertDraft(date = PreviewData.date.toString(), time = "15:00")))) }
+    FocusBuddyTheme { com.focusbuddy.ui.today.ReminderEditorSheet(state, { state = state.copy(draft = it) }, {}, {}, {}, {}) }
+}
+
+@Preview(name = "Task details / small steps", widthDp = 390, heightDp = 1000)
+@Preview(name = "Task details / dark", widthDp = 390, heightDp = 1000, uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun TaskDetailsPreview() {
+    val task = remember { com.focusbuddy.domain.model.Task(title = "Make space for the first draft", description = "One clear idea is enough to begin.",
+        scheduledDate = PreviewData.date, notes = "Start with the outline.", priority = com.focusbuddy.domain.model.TaskPriority.High) }
+    val details = com.focusbuddy.domain.model.TaskDetails(task, listOf(com.focusbuddy.domain.model.Reminder(taskId = task.id,
+        triggerAt = PreviewData.date.atTime(9, 0).atZone(java.time.ZoneId.systemDefault()).toInstant())), listOf(
+        com.focusbuddy.domain.model.Subtask(taskId = task.id, title = "Gather a few thoughts", completed = true),
+        com.focusbuddy.domain.model.Subtask(taskId = task.id, title = "Write the opening paragraph", sortOrder = 1)))
+    FocusBuddyTheme { com.focusbuddy.ui.today.TaskDetailsSheet(com.focusbuddy.ui.today.TaskDetailsState(task.id, details), emptyList(), {}, {}, {}, {}, {}, {}, { _, _ -> }) }
+}

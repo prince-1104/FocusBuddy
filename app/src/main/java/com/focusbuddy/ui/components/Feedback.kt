@@ -51,17 +51,37 @@ fun ErrorState(message: String, onRetry: () -> Unit, modifier: Modifier = Modifi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BuddyBottomSheet(title: String, onDismiss: () -> Unit, canDismiss: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+fun BuddyBottomSheet(title: String, onDismiss: () -> Unit, canDismiss: Boolean = true, hasUnsavedChanges: Boolean = false, footer: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
     val dismissAllowed by rememberUpdatedState(canDismiss)
+    val guardChanges by rememberUpdatedState(hasUnsavedChanges)
+    val attemptDismiss by rememberUpdatedState(onDismiss)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true,
-        confirmValueChange = { dismissAllowed || it != SheetValue.Hidden })
+        confirmValueChange = { target ->
+            when {
+                target != SheetValue.Hidden -> true
+                !dismissAllowed -> false
+                guardChanges -> { attemptDismiss(); false }
+                else -> true
+            }
+        })
     ModalBottomSheet(onDismissRequest = onDismiss,
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-        Column(Modifier.fillMaxWidth().verticalScrollForSheet().padding(horizontal = 24.dp).padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-            content()
+        if (footer == null) {
+            Column(Modifier.fillMaxWidth().imePadding().verticalScrollForSheet().padding(horizontal = 24.dp).padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+                content()
+            }
+        } else {
+            Column(Modifier.fillMaxWidth().fillMaxHeight(.92f).imePadding()) {
+                Column(Modifier.weight(1f).fillMaxWidth().verticalScrollForSheet().padding(horizontal = 24.dp).padding(bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(title, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
+                    content()
+                }
+                Surface(shadowElevation = 4.dp, color = MaterialTheme.colorScheme.surfaceContainerLow) { footer() }
+            }
         }
     }
 }

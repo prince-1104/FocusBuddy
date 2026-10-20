@@ -62,3 +62,10 @@ Run `scripts/verify.ps1` on Windows, or the Gradle build/test/lint tasks documen
 in `persistence.md`. Device visual QA and TalkBack interaction checks remain separate
 from compilation, JVM tests, and lint. Unsaved editor drafts survive configuration
 changes via the ViewModel, but are not persisted after process death.
+
+
+Task cards now open live details with editing, duplicate, completion and confirmed
+delete actions. The expanded task editor supports notes, recurrence, subtasks and
+multiple alerts. Standalone creation/editing and disabled-reminder management are
+available from Today and Explore. See [task experience](task-experience.md) for the
+current forms, validation policies, migration, scheduling boundary and tests.

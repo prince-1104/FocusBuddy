@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [TaskEntity::class, ReminderEntity::class, CategoryEntity::class, SubtaskEntity::class, FocusSessionEntity::class],
-    version = 2, exportSchema = true,
+    version = 3, exportSchema = true,
 )
 @TypeConverters(DatabaseConverters::class)
 abstract class FocusBuddyDatabase : RoomDatabase() {
@@ -29,10 +29,18 @@ abstract class FocusBuddyDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE tasks ADD COLUMN notes TEXT")
+                db.execSQL("ALTER TABLE reminders ADD COLUMN offsetMinutes INTEGER")
+                db.execSQL("ALTER TABLE reminders ADD COLUMN followTaskRecurrence INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun create(context: Context, name: String = "focusbuddy.db"): FocusBuddyDatabase =
             Room.databaseBuilder(context.applicationContext, FocusBuddyDatabase::class.java, name)
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
     }
 }

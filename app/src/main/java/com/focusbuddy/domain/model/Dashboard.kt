@@ -9,7 +9,7 @@ data class AgendaSnapshot(
 
 enum class TaskSection { Overdue, Upcoming, LaterToday, Anytime, Completed }
 enum class Greeting { Morning, Afternoon, Evening, SelectedDay }
-data class DashboardTask(val task: Task, val category: Category?, val activeReminderCount: Int, val overdue: Boolean)
+data class DashboardTask(val task: Task, val category: Category?, val activeReminderCount: Int, val overdue: Boolean, val subtasksCompleted: Int = 0, val subtasksTotal: Int = 0)
 data class TaskGroup(val section: TaskSection, val tasks: List<DashboardTask>)
 data class Dashboard(
     val selectedDate: LocalDate, val today: LocalDate, val greeting: Greeting,
@@ -29,4 +29,9 @@ data class TaskDraft(
     val title: String = "", val description: String = "", val date: String,
     val allDay: Boolean = true, val startTime: String = "", val endTime: String = "",
     val priority: TaskPriority = TaskPriority.Medium, val categoryId: java.util.UUID? = null,
+    val notes: String = "", val recurrenceRule: String = "",
+    val subtasks: List<SubtaskDraft> = emptyList(), val alerts: List<AlertDraft> = emptyList(),
+    val allowPastAlerts: Boolean = false,
+    val originalStart: java.time.Instant? = null, val originalEnd: java.time.Instant? = null,
+    val originalDate: String? = null,
 )

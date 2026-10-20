@@ -16,7 +16,7 @@ data class TaskEditorState(
     val loadError: String? = null, val error: String? = null,
     val validation: Map<String, String> = emptyMap(),
     val confirmDiscard: Boolean = false, val confirmDelete: Boolean = false,
-    val recurrenceRule: String? = null,
+    val recurrenceRule: String? = null, val duplicated: Boolean = false, val taskCompleted: Boolean = false,
 )
 
 data class TodayUiState(
@@ -50,10 +50,20 @@ internal fun Dashboard.uiState(): TodayUiState {
                     TaskPriority.Medium -> Priority.Medium
                     TaskPriority.High -> Priority.High
                 }, completed = card.task.completed, categoryColor = card.category?.color,
-                reminderCount = card.activeReminderCount, series = card.task.recurrenceRule != null, overdue = card.overdue)
+                reminderCount = card.activeReminderCount, series = card.task.recurrenceRule != null, overdue = card.overdue, subtasksCompleted = card.subtasksCompleted, subtasksTotal = card.subtasksTotal)
         }) },
         reminders = standaloneReminders.map { ReminderCardData(it.title.orEmpty(), time.format(it.effectiveTriggerAt),
             "Standalone reminder", "${it.id}:${it.effectiveTriggerAt}") },
         completed = completed, total = total, categories = categories, days = days,
         showMascot = settings.showMascot, animationsEnabled = settings.animationsEnabled)
 }
+
+data class TaskDetailsState(val id: UUID, val details: TaskDetails? = null, val loading: Boolean = false,
+    val error: String? = null, val busy: Boolean = false, val actionError: String? = null, val confirmDelete: Boolean = false)
+data class ReminderEditorState(val session: UUID = UUID.randomUUID(), val id: UUID? = null,
+    val draft: ReminderDraft, val original: ReminderDraft = draft, val loading: Boolean = false,
+    val busy: Boolean = false, val loadError: String? = null, val error: String? = null,
+    val validation: Map<String, String> = emptyMap(), val confirmDiscard: Boolean = false, val confirmDelete: Boolean = false)
+
+data class ReminderLibraryState(val open: Boolean = false, val loading: Boolean = false,
+    val reminders: List<Reminder> = emptyList(), val error: String? = null)

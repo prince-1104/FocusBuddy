@@ -37,7 +37,9 @@ installation exists elsewhere on this machine.
   bottom sheet, and confirmation dialog live in `ui/components`.
 - Today is connected to Room through a screen ViewModel, with real task creation,
   editing, completion, deletion, selected-day progress, and standalone reminders.
-  See [Today dashboard](docs/today.md) for behavior and test coverage. The focus
+  Task details, subtasks, recurrence, notes, multiple alerts and standalone reminder
+  editing are implemented. See [task experience](docs/task-experience.md) and
+  [Today dashboard](docs/today.md) for behavior and test coverage. The focus
   timer, reminder delivery, and mascot customization remain deferred.
 - No network or notification permissions. System cloud backup is excluded.
 - No DI framework: use constructor injection and a small application-owned

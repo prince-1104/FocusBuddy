@@ -31,6 +31,7 @@ interface TaskDao {
 
 @Dao
 interface ReminderDao {
+    @Query("SELECT * FROM reminders WHERE taskId = :taskId") suspend fun forTask(taskId: UUID): List<ReminderEntity>
     @Query("""SELECT r.* FROM reminders r LEFT JOIN tasks t ON t.id = r.taskId
         WHERE r.enabled = 1 AND (r.taskId IS NULL OR t.completed = 0)
         AND (r.recurrenceRule IS NOT NULL OR (r.triggerAt >= :start AND r.triggerAt < :end)
@@ -52,6 +53,7 @@ interface ReminderDao {
             OR (r.snoozedUntil >= :start AND r.snoozedUntil < :end))
         ORDER BY COALESCE(r.snoozedUntil, r.triggerAt), r.id""")
     suspend fun enabledBetween(start: Instant, end: Instant): List<ReminderEntity>
+    @Query("DELETE FROM reminders WHERE taskId = :taskId") suspend fun deleteForTask(taskId: UUID)
     @Query("UPDATE reminders SET enabled = 0, snoozedUntil = NULL WHERE taskId = :taskId")
     suspend fun disableForTask(taskId: UUID)
     @Query("DELETE FROM reminders WHERE id = :id") suspend fun delete(id: UUID)
@@ -59,6 +61,8 @@ interface ReminderDao {
 
 @Dao
 interface SubtaskDao {
+    @Query("UPDATE subtasks SET completed = :completed WHERE id = :id AND taskId = :taskId")
+    suspend fun setCompleted(taskId: UUID, id: UUID, completed: Boolean): Int
     @Insert suspend fun insertAll(subtasks: List<SubtaskEntity>)
     @Query("DELETE FROM subtasks WHERE taskId = :taskId") suspend fun deleteForTask(taskId: UUID)
 }

@@ -20,6 +20,7 @@ data class Task(
     val recurrenceRule: String? = null,
     val createdAt: Instant = Instant.now(),
     val updatedAt: Instant = createdAt,
+    val notes: String? = null,
 ) {
     init {
         require(title.isNotBlank()) { "Task title is required" }
@@ -44,11 +45,14 @@ data class Reminder(
     val soundEnabled: Boolean = true,
     val vibrationEnabled: Boolean = true,
     val snoozedUntil: Instant? = null,
+    val offsetMinutes: Int? = null, val followTaskRecurrence: Boolean = false,
 ) {
     val effectiveTriggerAt: Instant get() = snoozedUntil ?: triggerAt
     init {
         require(taskId != null || !title.isNullOrBlank()) { "Standalone reminders need a title" }
         require(title == null || title.isNotBlank())
+        require(offsetMinutes == null || (taskId != null && offsetMinutes in setOf(0, 5, 10, 30)))
+        require(!followTaskRecurrence || (taskId != null && offsetMinutes != null))
         require(enabled || snoozedUntil == null) { "Disabled reminders cannot remain snoozed" }
         require(recurrenceRule == null || recurrenceRule.isNotBlank())
     }

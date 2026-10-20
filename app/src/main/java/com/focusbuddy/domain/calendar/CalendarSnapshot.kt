@@ -3,15 +3,16 @@ package com.focusbuddy.domain.calendar
 import com.focusbuddy.domain.model.*
 import java.time.*
 
-data class TaskOccurrence(val task: Task, val date: LocalDate, val start: Instant?)
+data class TaskOccurrence(val task: Task, val date: LocalDate, val start: Instant?, val subtasksCompleted: Int = 0, val subtasksTotal: Int = 0)
 data class AlertOccurrence(val reminder: Reminder, val trigger: Instant, val task: Task?)
 data class CalendarSnapshot(val days: List<DaySummary>, val tasks: List<TaskOccurrence>, val alerts: List<AlertOccurrence>, val categories: List<Category>, val zone: ZoneId)
 
-fun calendarSnapshot(tasks: List<Task>, reminders: List<Reminder>, categories: List<Category>, month: YearMonth, zone: ZoneId): CalendarSnapshot {
+fun calendarSnapshot(tasks: List<Task>, reminders: List<Reminder>, categories: List<Category>, month: YearMonth, zone: ZoneId, subtasks: List<Subtask> = emptyList()): CalendarSnapshot {
     val from = month.atDay(1)
     val through = month.atEndOfMonth()
+    val children = subtasks.groupBy { it.taskId }
     val occurrences = tasks.flatMap { task -> Recurrence.dates(task.scheduledDate, task.recurrenceRule, from, through).map { date ->
-        TaskOccurrence(task, date, if (date == task.scheduledDate) task.startAt else task.startAt?.atZone(zone)?.let { date.atTime(it.toLocalTime()).atZone(zone).toInstant() })
+        TaskOccurrence(task, date, if (date == task.scheduledDate) task.startAt else task.startAt?.atZone(zone)?.let { date.atTime(it.toLocalTime()).atZone(zone).toInstant() }, children[task.id].orEmpty().count { it.completed }, children[task.id].orEmpty().size)
     } }.distinctBy { it.task.id to it.date }
     val parents = tasks.associateBy { it.id }
     val alerts = reminders.filter { it.enabled && (it.taskId == null || parents[it.taskId]?.completed == false) }.flatMap { reminder ->
@@ -19,8 +20,17 @@ fun calendarSnapshot(tasks: List<Task>, reminders: List<Reminder>, categories: L
         val rawUntil = reminder.recurrenceRule?.removePrefix("RRULE:")?.split(';')?.firstOrNull { it.startsWith("UNTIL=") }?.substringAfter('=')
         val instantLimit = rawUntil?.takeIf { it.endsWith('Z') }?.let { LocalDateTime.parse(it.dropLast(1), java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")).toInstant(ZoneOffset.UTC) }
         val localRule = if (instantLimit == null) reminder.recurrenceRule else reminder.recurrenceRule?.replace("UNTIL=$rawUntil", "UNTIL=" + instantLimit.atZone(zone).toLocalDate().format(java.time.format.DateTimeFormatter.BASIC_ISO_DATE))
-        val dates = Recurrence.dates(anchor.toLocalDate(), localRule, from, through)
-        val triggers = dates.map { if (it == anchor.toLocalDate()) reminder.triggerAt else it.atTime(anchor.toLocalTime()).atZone(zone).toInstant() }.toMutableList()
+        val parent = parents[reminder.taskId]
+        val triggers = if (reminder.followTaskRecurrence && reminder.offsetMinutes != null && parent != null) {
+            Recurrence.dates(parent.scheduledDate, parent.recurrenceRule, from.minusDays(1), through.plusDays(1)).map { date ->
+                val start = if (date == parent.scheduledDate && parent.startAt != null) parent.startAt else
+                    date.atTime(parent.startAt?.atZone(zone)?.toLocalTime() ?: LocalTime.of(9, 0)).atZone(zone).toInstant()
+                start.minusSeconds(reminder.offsetMinutes * 60L)
+            }.filter { it.atZone(zone).toLocalDate() in from..through }.toMutableList()
+        } else {
+            val dates = Recurrence.dates(anchor.toLocalDate(), localRule, from, through)
+            dates.map { if (it == anchor.toLocalDate()) reminder.triggerAt else it.atTime(anchor.toLocalTime()).atZone(zone).toInstant() }.toMutableList()
+        }
         // Snoozing moves the original alert only, never every future occurrence in its series.
         if (reminder.snoozedUntil != null) {
             triggers.remove(reminder.triggerAt)

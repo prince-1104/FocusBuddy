@@ -4,13 +4,13 @@ import com.focusbuddy.data.local.*
 import com.focusbuddy.domain.model.*
 
 internal fun Task.entity() = TaskEntity(id, title, description, scheduledDate, startAt, endAt, allDay,
-    priority, completed, categoryId, recurrenceRule, createdAt, updatedAt)
+    priority, completed, categoryId, recurrenceRule, createdAt, updatedAt, notes)
 internal fun TaskEntity.model() = Task(id, title, description, scheduledDate, startAt, endAt, allDay,
-    priority, completed, categoryId, recurrenceRule, createdAt, updatedAt)
+    priority, completed, categoryId, recurrenceRule, createdAt, updatedAt, notes)
 internal fun Reminder.entity() = ReminderEntity(id, taskId, title, description, triggerAt, enabled,
-    recurrenceRule, soundUri, soundEnabled, vibrationEnabled, snoozedUntil)
+    recurrenceRule, soundUri, soundEnabled, vibrationEnabled, snoozedUntil, offsetMinutes, followTaskRecurrence)
 internal fun ReminderEntity.model() = Reminder(id, taskId, title, description, triggerAt, enabled,
-    recurrenceRule, soundUri, soundEnabled, vibrationEnabled, snoozedUntil)
+    recurrenceRule, soundUri, soundEnabled, vibrationEnabled, snoozedUntil, offsetMinutes, followTaskRecurrence)
 internal fun Category.entity() = CategoryEntity(id, name, color, icon)
 internal fun CategoryEntity.model() = Category(id, name, color, icon)
 internal fun Subtask.entity() = SubtaskEntity(id, taskId, title, completed, sortOrder)
