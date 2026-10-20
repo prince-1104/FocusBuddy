@@ -21,7 +21,7 @@ import java.time.*
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = com.focusbuddy.TestApplication::class)
 class CalendarRepositoryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val name = "calendar-${UUID.randomUUID()}.db"
@@ -31,7 +31,7 @@ class CalendarRepositoryTest {
     private val reminders = RoomReminderRepository(database, clock)
     private val zones = MutableStateFlow(ZoneId.of("America/New_York"))
     private val source = object : TimeZoneSource { override val zones = this@CalendarRepositoryTest.zones }
-    private val calendar = RoomCalendarRepository(database, source)
+    private val calendar = RoomCalendarRepository(database, source, Clock.fixed(Instant.parse("1900-01-01T00:00:00Z"), ZoneOffset.UTC))
 
     @After fun close() { database.close(); context.deleteDatabase(name) }
 
@@ -131,7 +131,7 @@ class CalendarRepositoryTest {
         val task = tasks.create(Task(title = "Weekly", scheduledDate = selected.minusWeeks(2), recurrenceRule = "FREQ=WEEKLY;COUNT=5"))
         reminders.create(Reminder(title = "Daily", triggerAt = selected.minusDays(2).atTime(10, 0).atZone(zones.value).toInstant(), recurrenceRule = "FREQ=DAILY;COUNT=4"))
         val month = calendar.observeSnapshot(YearMonth.from(selected)).first()
-        val day = RoomAgendaRepository(database).observe(selected, selected, zones.value).first()
+        val day = RoomAgendaRepository(database, clock).observe(selected, selected, zones.value).first()
         assertEquals(month.days.first { it.date == selected }, day.days.first { it.date == selected })
         assertEquals(listOf(task.id), day.tasks.map { it.task.id })
         assertEquals(selected, day.tasks.single().task.scheduledDate)

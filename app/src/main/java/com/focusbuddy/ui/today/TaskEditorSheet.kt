@@ -91,9 +91,10 @@ fun TaskEditorSheet(state: TaskEditorState, categories: List<Category>, onChange
                 } }
                 SecondaryButton("+ Custom reminder", { onChange(draft.copy(alerts = draft.alerts + AlertDraft(date = draft.date))) }, enabled = enabled)
                 EditorToggle("Keep enabled alerts in the past", draft.allowPastAlerts, { onChange(draft.copy(allowPastAlerts = it)) }, enabled)
-                Text("Past alerts stay pending; they are not silently moved to another time.", style = MaterialTheme.typography.bodySmall)
-                Text("Alerts are saved on this device. Android notification delivery is not available yet.", style = MaterialTheme.typography.bodySmall)
+                Text("Past alerts expire without delivery; they are never silently moved to now.", style = MaterialTheme.typography.bodySmall)
+                Text("Alerts are saved on this device. Delivery follows your Android notification, channel and timing permissions.", style = MaterialTheme.typography.bodySmall)
                 (state.error ?: state.validation["past"])?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite; error(it) }) }
+                com.focusbuddy.ui.reminders.ReminderSettingsEntry(compact = true)
                 if (state.busy) LoadingState("Saving your changes")
                 if (state.taskId != null) TextButton(onDelete, enabled = enabled) { Text("Delete task", color = MaterialTheme.colorScheme.error) }
             }

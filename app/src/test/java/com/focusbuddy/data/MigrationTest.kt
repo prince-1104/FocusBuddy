@@ -24,7 +24,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = com.focusbuddy.TestApplication::class)
 class MigrationTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val name = "migration-${UUID.randomUUID()}.db"
@@ -38,9 +38,14 @@ class MigrationTest {
         return object : SQLiteOpenHelper(context, name, null, version) {
                 override fun onCreate(db: SQLiteDatabase) {
                     sql.split(';').filter { it.isNotBlank() }.forEach { db.execSQL(it.trim()) }
-                    if (version == 2) {
+                    if (version >= 2) {
                         db.execSQL("ALTER TABLE reminders ADD COLUMN snoozedUntil INTEGER")
                         db.execSQL("CREATE INDEX index_reminders_enabled_snoozedUntil ON reminders(enabled,snoozedUntil)")
+                    }
+                    if (version >= 3) {
+                        db.execSQL("ALTER TABLE tasks ADD COLUMN notes TEXT")
+                        db.execSQL("ALTER TABLE reminders ADD COLUMN offsetMinutes INTEGER")
+                        db.execSQL("ALTER TABLE reminders ADD COLUMN followTaskRecurrence INTEGER NOT NULL DEFAULT 0")
                     }
                 }
                 override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = error("Not used")
@@ -87,13 +92,13 @@ class MigrationTest {
     @Test fun omittedMigrationChangeFailsRoomSchemaValidation() {
         legacy().use { it.writableDatabase }
         val broken = Room.databaseBuilder(context, FocusBuddyDatabase::class.java, name)
-            .addMigrations(object : Migration(1, 2) { override fun migrate(db: SupportSQLiteDatabase) = Unit }, FocusBuddyDatabase.MIGRATION_2_3)
+            .addMigrations(object : Migration(1, 2) { override fun migrate(db: SupportSQLiteDatabase) = Unit }, FocusBuddyDatabase.MIGRATION_2_3, FocusBuddyDatabase.MIGRATION_3_4)
             .build().also { database = it }
         assertThrows(IllegalStateException::class.java) { broken.openHelper.writableDatabase }
     }
 
     @Test fun unknownFutureVersionFailsWithoutDestructiveFallback() {
-        legacy(version = 4).use { it.writableDatabase }
+        legacy(version = 5).use { it.writableDatabase }
         val older = FocusBuddyDatabase.create(context, name).also { database = it }
         assertThrows(IllegalStateException::class.java) { older.openHelper.writableDatabase }
     }
@@ -109,5 +114,16 @@ class MigrationTest {
         val taskRepository = RoomTaskRepository(reopened, Clock.systemUTC())
         val task = taskRepository.create(com.focusbuddy.domain.model.Task(title = "Notes", scheduledDate = LocalDate.of(2026, 10, 20), notes = "Separate notes"))
         assertEquals("Separate notes", taskRepository.get(task.id)!!.task.notes)
+    }
+
+    @Test fun versionThreeGainsOccurrenceLedgerAndJournalWithoutChangingReminders() = runTest {
+        val id = UUID.randomUUID()
+        legacy(version = 3).use { helper ->
+            helper.writableDatabase.execSQL("INSERT INTO reminders(id,title,triggerAt,enabled,soundEnabled,vibrationEnabled) VALUES(?,'Retained in v4',1000,1,1,1)", arrayOf(id.toString()))
+        }
+        val reopened = FocusBuddyDatabase.create(context, name).also { database = it }
+        assertEquals("Retained in v4", com.focusbuddy.data.repository.RoomReminderRepository(reopened, Clock.systemUTC()).get(id)!!.title)
+        assertTrue(reopened.occurrences().all().isEmpty())
+        assertTrue(reopened.occurrences().journal().isEmpty())
     }
 }

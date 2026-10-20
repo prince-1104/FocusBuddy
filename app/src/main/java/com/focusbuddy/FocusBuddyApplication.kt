@@ -3,6 +3,7 @@ package com.focusbuddy
 import android.app.Application
 import com.focusbuddy.app.AppContainer
 
-class FocusBuddyApplication : Application() {
+open class FocusBuddyApplication : Application() {
+    override fun onCreate() { super.onCreate(); container.reminderScheduler.initialize() }
     val container by lazy { AppContainer(this) }
 }

@@ -35,7 +35,8 @@ fun TaskDetailsSheet(state: TaskDetailsState, categories: List<Category>, onDism
                 task.notes?.let { Text("Private notes", style = MaterialTheme.typography.titleSmall); Text(it) }
                 task.recurrenceRule?.let { Text("Repeats: $it"); Text("Edits, completion and deletion apply to the whole series.", style = MaterialTheme.typography.bodySmall) }
                 if (details.subtasks.isNotEmpty()) {
-                    HorizontalDivider()
+                    com.focusbuddy.ui.reminders.ReminderSettingsEntry(compact = true)
+                HorizontalDivider()
                     val completed = details.subtasks.count { it.completed }
                     Text("Small steps / $completed of ${details.subtasks.size} complete", style = MaterialTheme.typography.titleMedium)
                     LinearProgressIndicator(progress = { completed.toFloat() / details.subtasks.size }, modifier = Modifier.fillMaxWidth())
@@ -52,12 +53,12 @@ fun TaskDetailsSheet(state: TaskDetailsState, categories: List<Category>, onDism
                 if (details.reminders.isEmpty()) Text("No alerts attached. Add one in Edit task.")
                 details.reminders.forEach { reminder -> BuddyCard(contentPadding = 12.dp) {
                     Text(time.format(reminder.effectiveTriggerAt), style = MaterialTheme.typography.titleSmall)
-                    Text(if (reminder.enabled) "Enabled / pending" else "Disabled")
+                    Text(if (reminder.enabled) "Enabled schedule" else "Disabled")
                     if (reminder.snoozedUntil != null) Text("Snoozed")
                     reminder.recurrenceRule?.let { Text("Repeats: $it") }
                     Text("Sound ${if (reminder.soundEnabled) "on" else "off"} / Vibration ${if (reminder.vibrationEnabled) "on" else "off"}")
                 } }
-                Text("Alerts are stored locally; Android notification delivery is not available yet.", style = MaterialTheme.typography.bodySmall)
+                Text("Alerts are stored locally; Delivery follows your Android notification, channel and timing permissions.", style = MaterialTheme.typography.bodySmall)
                 state.actionError?.let { Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
                 PrimaryButton("Edit task", onEdit, Modifier.fillMaxWidth(), !state.busy)
                 SecondaryButton(if (task.completed) "Reopen${if (task.recurrenceRule != null) " series" else " task"}" else "Complete${if (task.recurrenceRule != null) " series" else " task"}", onComplete, Modifier.fillMaxWidth(), !state.busy)

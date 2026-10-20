@@ -19,7 +19,7 @@ import java.time.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = com.focusbuddy.TestApplication::class)
 class AppViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val viewModels = mutableListOf<AppViewModel>()

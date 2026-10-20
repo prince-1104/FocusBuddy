@@ -24,12 +24,15 @@ fun FocusBuddyApp(appViewModel: AppViewModel, todayViewModel: TodayViewModel, ex
     val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
     val destination = Destination.entries.firstOrNull { it.name == selectedName } ?: Destination.Today
     BackHandler(enabled = destination != Destination.Today) { appViewModel.select(Destination.Today) }
-    FocusBuddyContent(destination, appViewModel::select, uiState.theme, appViewModel::setTheme,
+    Column(Modifier.statusBarsPadding()) {
+    com.focusbuddy.ui.reminders.ReminderSettingsEntry()
+    Box(Modifier.weight(1f)) { FocusBuddyContent(destination, appViewModel::select, uiState.theme, appViewModel::setTheme,
         todayContent = { TodayRoute(todayViewModel, appViewModel::selectDate, appViewModel::selectToday, { appViewModel.select(Destination.Explore) }) },
         exploreContent = { com.focusbuddy.ui.explore.ExploreRoute(exploreViewModel, todayViewModel, appViewModel::selectDate, appViewModel::selectToday) },
         showMascot = uiState.showMascot, onMascotVisibilityChange = appViewModel::setMascotVisible,
         animationsEnabled = uiState.animationsEnabled, onAnimationsChange = appViewModel::setAnimationsEnabled,
-        settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryFailedPreference)
+        settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryFailedPreference) }
+    }
 }
 
 /** Stateless navigation shell; previews never construct a ViewModel or read preferences. */

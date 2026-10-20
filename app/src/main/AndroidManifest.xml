@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <application
         android:name=".FocusBuddyApplication"
         android:allowBackup="false"
@@ -7,6 +11,21 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.FocusBuddy">
+        <receiver android:name=".platform.reminders.ReminderAlarmReceiver" android:exported="false" />
+        <receiver android:name=".platform.reminders.ReminderActionReceiver" android:exported="false" />
+        <receiver android:name=".platform.reminders.ReminderRecoveryReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+        <service android:name=".platform.reminders.ReminderReconcileJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
+        <activity android:name=".ui.reminders.ReminderPermissionActivity" android:exported="false" />
+        <activity android:name=".ui.reminders.ReminderActivity" android:exported="false" android:launchMode="singleTop" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

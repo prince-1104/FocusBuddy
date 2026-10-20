@@ -26,7 +26,7 @@ import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = com.focusbuddy.TestApplication::class)
 class TodayViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val context = ApplicationProvider.getApplicationContext<Context>()
@@ -47,7 +47,7 @@ class TodayViewModelTest {
         database.close(); context.deleteDatabase(name); Dispatchers.resetMain()
     }
 
-    private fun TestScope.model(taskRepository: TaskRepository = tasks, agenda: AgendaRepository = RoomAgendaRepository(database)): TodayViewModel {
+    private fun TestScope.model(taskRepository: TaskRepository = tasks, agenda: AgendaRepository = RoomAgendaRepository(database, Clock.fixed(now.toInstant(), ZoneOffset.UTC))): TodayViewModel {
         val model = TodayViewModel(selected, ObserveDashboard(agenda, preferences, moments), taskRepository,
             { selected.value = it }, { ZoneOffset.UTC }, reminders, Clock.fixed(now.toInstant(), ZoneOffset.UTC))
         models += model
@@ -145,7 +145,7 @@ class TodayViewModelTest {
     @Test fun loadingErrorCanRetryAndCompletionFailureLeavesStoredStateIntact() = runTest(dispatcher) {
         val task = tasks.create(Task(title = "Reliable state", scheduledDate = date))
         var failRead = true
-        val realAgenda = RoomAgendaRepository(database)
+        val realAgenda = RoomAgendaRepository(database, Clock.fixed(now.toInstant(), ZoneOffset.UTC))
         val agenda = object : AgendaRepository {
             override fun observe(selected: LocalDate, today: LocalDate, zone: ZoneId) = flow {
                 if (failRead) throw IOException("test read failure")

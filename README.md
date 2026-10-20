@@ -40,8 +40,12 @@ installation exists elsewhere on this machine.
   Task details, subtasks, recurrence, notes, multiple alerts and standalone reminder
   editing are implemented. See [task experience](docs/task-experience.md) and
   [Today dashboard](docs/today.md) for behavior and test coverage. The focus
-  timer, reminder delivery, and mascot customization remain deferred.
-- No network or notification permissions. System cloud backup is excluded.
+  timer and mascot customization remain deferred.
+- Local reminder delivery now uses AlarmManager, notification channels, durable
+  occurrence state, permission explanations and recovery jobs. See
+  [reminder delivery and verification limits](docs/reminders.md).
+- No network permission. Notification, exact-alarm, reboot and bounded wake-lock
+  permissions support local alerts. System cloud backup is excluded.
 - No DI framework: use constructor injection and a small application-owned
   dependency container when persistence introduces shared dependencies.
 - Room now stores tasks, reminders, categories, subtasks, and focus sessions behind
@@ -49,7 +53,8 @@ installation exists elsewhere on this machine.
   migrates the previous theme preference. See [offline persistence](docs/persistence.md)
   for APIs, migration policy, calendar semantics, tests, and limitations.
 - Today and Explore read persisted records; Focus and Mascot remain scaffolds. No
-  production samples seed the database. Android notification delivery remains deferred.
+  production samples seed the database. Device notification verification remains
+  outstanding until the documented emulator/physical-device checks run.
 
 ## Structure and boundaries
 
@@ -74,6 +79,10 @@ app/src/main/java/com/focusbuddy/
   data/repository/              Transactional repository implementations
   data/preferences/             DataStore settings and legacy theme migration
   data/time/                    Device timezone-change source
+  data/reminders/               Durable delivery coordinator and agenda projection
+  domain/reminders/             Scheduler contracts, occurrence planning and identity
+  platform/reminders/           Native alarms, notifications, receivers and recovery jobs
+  ui/reminders/                 Permission explanations and dedicated reminder screen
   domain/model/                 Android-independent records and preferences
   domain/repository/            Testable Flow/suspend repository contracts
   domain/time/                  Zone source contract and DST-aware month boundaries
@@ -172,7 +181,7 @@ Versions are pinned stable releases, not an assertion that these are the newest:
 - [DataStore 1.2.1](https://developer.android.com/jetpack/androidx/releases/datastore)
 - [KSP 2.2.21-2.0.5](https://github.com/google/ksp/releases/tag/2.2.21-2.0.5), matching the Kotlin compiler line
 - [Robolectric 4.16.1](https://github.com/robolectric/robolectric/releases/tag/robolectric-4.16.1)
-- [AndroidX Test Core 1.7.0](https://developer.android.com/jetpack/androidx/releases/test)
+- [AndroidX Test Core / instrumentation runner 1.7.0](https://developer.android.com/jetpack/androidx/releases/test)
 
 Dependency downloads require a connection during setup; the application itself
 has no network requirement.

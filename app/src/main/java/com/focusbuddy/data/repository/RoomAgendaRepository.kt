@@ -1,6 +1,7 @@
 package com.focusbuddy.data.repository
 
 import androidx.room.withTransaction
+import com.focusbuddy.data.reminders.withDeliveryState
 import com.focusbuddy.data.local.FocusBuddyDatabase
 import com.focusbuddy.domain.calendar.calendarSnapshot
 import com.focusbuddy.domain.model.*
@@ -8,25 +9,27 @@ import com.focusbuddy.domain.repository.AgendaRepository
 import kotlinx.coroutines.flow.*
 import java.time.*
 
-class RoomAgendaRepository(private val database: FocusBuddyDatabase) : AgendaRepository {
+class RoomAgendaRepository(private val database: FocusBuddyDatabase, private val clock: Clock = Clock.systemUTC()) : AgendaRepository {
     override fun observe(selected: LocalDate, today: LocalDate, zone: ZoneId) =
-        database.invalidationTracker.createFlow("tasks", "reminders", "subtasks", "categories").map {
+        database.invalidationTracker.createFlow("tasks", "reminders", "subtasks", "categories", "reminder_occurrences").map {
             val from = selected.minusDays(14)
             val through = selected.plusDays(14)
             val records = database.withTransaction {
-                val reminders = database.reminders().calendarCandidates(from.atStartOfDay(zone).toInstant(),
+                val ledger = database.occurrences().between(from.atStartOfDay(zone).toInstant(), through.plusDays(1).atStartOfDay(zone).toInstant())
+                val candidates = database.reminders().calendarCandidates(from.atStartOfDay(zone).toInstant(),
                     through.plusDays(1).atStartOfDay(zone).toInstant()).map { it.model() }
+                val reminders = (candidates + database.reminders().getByIds(ledger.filter { it.kind == "Snooze" }.map { it.reminderId }.distinct()).map { it.model() }).distinctBy { it.id }
                 val tasks = database.tasks().calendarCandidates(from, through).map { it.model() }
                 val missing = reminders.mapNotNull { it.taskId }.distinct() - tasks.map { it.id }.toSet()
                 val allTasks = tasks + database.tasks().getByIds(missing).map { it.model() }
                 val details = database.tasks().detailsByIds(allTasks.map { it.id }).map { it.model() }
                 val overdue = if (selected == today) database.tasks().agenda(selected, today).map { it.model() }
                     .filter { it.task.scheduledDate < today && it.task.recurrenceRule == null } else emptyList()
-                Records(allTasks, reminders, database.categories().getAll().map { it.model() }, details, overdue)
+                Records(allTasks, reminders, database.categories().getAll().map { it.model() }, details, overdue, ledger)
             }
             val snapshots = generateSequence(YearMonth.from(from)) { it.plusMonths(1) }
                 .takeWhile { it <= YearMonth.from(through) }
-                .map { calendarSnapshot(records.tasks, records.reminders, records.categories, it, zone, records.details.flatMap { details -> details.subtasks }) }.toList()
+                .map { calendarSnapshot(records.tasks, records.reminders, records.categories, it, zone, records.details.flatMap { details -> details.subtasks }).withDeliveryState(records.ledger, clock.instant(), records.reminders, records.tasks) }.toList()
             val snapshot = snapshots.first { YearMonth.from(it.days.first().date) == YearMonth.from(selected) }
             val selectedTasks = snapshot.tasks.filter { it.date == selected }.map { occurrence ->
                 val details = records.details.first { it.task.id == occurrence.task.id }
@@ -41,5 +44,5 @@ class RoomAgendaRepository(private val database: FocusBuddyDatabase) : AgendaRep
         }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default)
 
     private data class Records(val tasks: List<Task>, val reminders: List<Reminder>, val categories: List<Category>,
-        val details: List<TaskDetails>, val overdue: List<TaskDetails>)
+        val details: List<TaskDetails>, val overdue: List<TaskDetails>, val ledger: List<com.focusbuddy.data.local.OccurrenceEntity>)
 }

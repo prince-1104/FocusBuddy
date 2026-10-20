@@ -15,9 +15,13 @@ import com.focusbuddy.domain.usecase.ObserveDashboard
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     private val clock = Clock.systemUTC()
-    private val database by lazy { FocusBuddyDatabase.create(appContext) }
+    val database by lazy { FocusBuddyDatabase.create(appContext) }
     val preferences: PreferencesRepository by lazy { DataStorePreferencesRepository(appContext.focusBuddyPreferences) }
-    val reminderScheduler = com.focusbuddy.domain.reminders.UnavailableReminderScheduler
+    val reminderScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    val reminderOccurrences: com.focusbuddy.domain.reminders.ReminderOccurrenceRepository by lazy { com.focusbuddy.data.reminders.RoomOccurrenceRepository(database) }
+    val reminderEngine by lazy { com.focusbuddy.data.reminders.ReminderEngine(database,
+        com.focusbuddy.platform.reminders.AndroidAlarmGateway(appContext), com.focusbuddy.platform.reminders.AndroidNotifications(appContext), clock) }
+    val reminderScheduler by lazy { com.focusbuddy.platform.reminders.AndroidReminderScheduler(appContext, reminderEngine, reminderScope) }
     val tasks: TaskRepository by lazy { SchedulingTaskRepository(RoomTaskRepository(database, clock), reminderScheduler) }
     val reminders: ReminderRepository by lazy { SchedulingReminderRepository(RoomReminderRepository(database, clock), reminderScheduler) }
     val categories: CategoryRepository by lazy { RoomCategoryRepository(database) }

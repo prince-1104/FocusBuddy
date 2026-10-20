@@ -8,6 +8,7 @@ import java.util.UUID
 
 @Dao
 interface TaskDao {
+    @Query("SELECT * FROM tasks") suspend fun all(): List<TaskEntity>
     @Query("SELECT * FROM tasks WHERE scheduledDate <= :through AND (scheduledDate >= :from OR recurrenceRule IS NOT NULL)")
     suspend fun calendarCandidates(from: LocalDate, through: LocalDate): List<TaskEntity>
     @Query("SELECT * FROM tasks WHERE id IN (:ids)") suspend fun getByIds(ids: List<UUID>): List<TaskEntity>
@@ -31,6 +32,8 @@ interface TaskDao {
 
 @Dao
 interface ReminderDao {
+    @Query("SELECT * FROM reminders WHERE id IN (:ids)") suspend fun getByIds(ids: List<UUID>): List<ReminderEntity>
+    @Query("SELECT * FROM reminders") suspend fun all(): List<ReminderEntity>
     @Query("SELECT * FROM reminders WHERE taskId = :taskId") suspend fun forTask(taskId: UUID): List<ReminderEntity>
     @Query("""SELECT r.* FROM reminders r LEFT JOIN tasks t ON t.id = r.taskId
         WHERE r.enabled = 1 AND (r.taskId IS NULL OR t.completed = 0)

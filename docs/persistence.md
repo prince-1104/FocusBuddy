@@ -86,7 +86,7 @@ supported rule fields, timezone policies, series semantics, and limitations.
 ## Schema and migrations
 
 There was **no shipped Room database** before this phase. New installations now create
-schema version 3 directly. The task-editor phase adds an additive v2-to-v3 migration
+schema version 4 directly. The task-editor phase adds an additive v2-to-v3 migration
 for notes and relative reminder metadata; see [task experience](task-experience.md). `app/schemas/v1.sql` is an explicit, pre-release version-1
 baseline; `MIGRATION_1_2` adds nullable `reminders.snoozedUntil` and its enabled/snooze
 index without modifying existing records. Migration tests open a real version-1
@@ -94,7 +94,9 @@ SQLite file, apply the migration through Room, and exercise Room's complete targ
 schema validation. A deliberately broken migration must fail validation, and an
 unknown newer version must fail rather than erase data.
 
-Room exports the authoritative version-2 JSON under `app/schemas`. Review and commit
+Room exports authoritative versioned JSON under `app/schemas`; schema 4 adds the
+delivery ledger and alarm journal through MIGRATION_3_4. See [reminders](reminders.md).
+Review and commit
 every future exported schema with its migration and preservation tests. The v1 SQL
 fixture is not a historical release claim; there is no legacy task database or
 older app data format to import. No downgrade path is supported.
@@ -126,9 +128,8 @@ test reports, and lint reports as `persistence-verification` artifacts.
 File close/reopen tests simulate repository/process recreation; they do not replace
 a physical device reboot or power-loss test. Actual notification delivery, OS alarm
 cancellation/rescheduling, boot recovery, permission handling, and delivery reconciliation
-are not implemented here. There are no previously scheduled FocusBuddy
-alarms in the UI foundation. When delivery is added it must reconcile persisted
-enabled state after reboot and re-check that state before delivering an alert.
+are now implemented in the separate [reminder layer](reminders.md); actual device
+verification remains outstanding. Source records are rechecked before delivery.
 Sound URI access permissions will also need to be persisted when a sound picker is
 implemented. Storage is single-process and is not encrypted by an app-specific key;
 it relies on Android's app sandbox/device protection. App cloud backup stays disabled.

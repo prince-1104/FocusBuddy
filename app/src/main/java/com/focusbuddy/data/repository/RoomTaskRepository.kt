@@ -56,8 +56,12 @@ class RoomTaskRepository(private val database: FocusBuddyDatabase, private val c
             scheduledDate = content.scheduledDate, startAt = content.startAt, endAt = content.endAt,
             allDay = content.allDay, priority = content.priority, categoryId = content.categoryId,
             notes = notes, recurrenceRule = recurrenceRule))
-        this.reminders.deleteForTask(id)
-        this.reminders.insertAll(reminders.map { (if (record.completed) it.copy(enabled = false, snoozedUntil = null) else it).entity() })
+        val previousAlerts = this.reminders.forTask(id).associateBy { it.id }
+        previousAlerts.keys.filter { old -> reminders.none { it.id == old } }.forEach { this.reminders.delete(it) }
+        reminders.forEach { edited ->
+            val entity = (if (record.completed) edited.copy(enabled = false, snoozedUntil = null) else edited).entity()
+            if (entity.id in previousAlerts) this.reminders.update(entity) else this.reminders.insert(entity)
+        }
         this.subtasks.deleteForTask(id)
         this.subtasks.insertAll(subtasks.map { it.entity() })
         record

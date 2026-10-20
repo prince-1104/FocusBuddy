@@ -68,10 +68,10 @@ restore disabled reminders.
 Recurring wall-clock reminders use the current device zone. Subsequent DST gaps
 shift forward using java.time's zone resolution; overlaps use the earlier offset.
 The seed instant is preserved exactly, including a second overlap occurrence.
-A stored rule has no fixed original timezone. Enabled undelivered overdue alerts
-remain pending until disabled; no delivered/dismissed occurrence ledger or Android
-notification scheduling exists yet. Delivery must eventually reconcile those states
-and per-occurrence snoozes before presenting historical delivery totals.
+A stored rule has no fixed original timezone. Agenda/count projections now reconcile
+the durable occurrence ledger: consumed or expired alerts disappear, and pending
+snoozes appear on their actual trigger dates. Previously registered overdue alerts
+have a bounded delivery grace period. See [reminder delivery](reminders.md).
 
 ## Verification
 

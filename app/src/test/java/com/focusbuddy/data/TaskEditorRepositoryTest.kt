@@ -19,7 +19,7 @@ import java.time.*
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = com.focusbuddy.TestApplication::class)
 class TaskEditorRepositoryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val name = "editor-${UUID.randomUUID()}.db"

@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        handleReminderIntent(intent)
         enableEdgeToEdge()
         setContent {
             val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
@@ -56,5 +57,20 @@ class MainActivity : ComponentActivity() {
             }
             FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel, todayViewModel, exploreViewModel) }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        (application as FocusBuddyApplication).container.reminderScheduler.requestReconciliation()
+    }
+    override fun onNewIntent(intent: android.content.Intent) { super.onNewIntent(intent); setIntent(intent); handleReminderIntent(intent) }
+    private fun handleReminderIntent(intent: android.content.Intent) {
+        fun id(name: String) = intent.getStringExtra(name)?.let { runCatching { java.util.UUID.fromString(it).toString() }.getOrNull() }
+        val open = id("openTask"); val edit = id("editTask"); val reminder = id("editReminder")
+        if (open == null && edit == null && reminder == null) return
+        appViewModel.select(com.focusbuddy.ui.Destination.Today)
+        intent.getStringExtra("reminderDate")?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull()?.let(appViewModel::selectDate) }
+        when { open != null -> todayViewModel.openTask(open); edit != null -> todayViewModel.editTask(edit); reminder != null -> todayViewModel.editReminder(reminder) }
+        listOf("openTask", "editTask", "editReminder", "reminderDate").forEach(intent::removeExtra)
     }
 }

@@ -23,7 +23,7 @@ import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = com.focusbuddy.TestApplication::class)
 class TaskExperienceViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val context = ApplicationProvider.getApplicationContext<Context>()
@@ -51,7 +51,7 @@ class TaskExperienceViewModelTest {
     }
     private fun TestScope.model(): TodayViewModel {
         val moments = object : MomentSource { override val moments = MutableStateFlow(now) }
-        val vm = TodayViewModel(selected, ObserveDashboard(RoomAgendaRepository(db), preferences, moments), tasks,
+        val vm = TodayViewModel(selected, ObserveDashboard(RoomAgendaRepository(db, clock), preferences, moments), tasks,
             { selected.value = it }, { ZoneOffset.UTC }, reminders, clock)
         models += vm
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.uiState.collect() }

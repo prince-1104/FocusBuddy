@@ -20,7 +20,7 @@ import java.time.*
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = com.focusbuddy.TestApplication::class)
 class RepositoryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val databaseName = "repository-${UUID.randomUUID()}.db"

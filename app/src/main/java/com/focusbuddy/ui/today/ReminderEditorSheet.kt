@@ -26,10 +26,11 @@ fun ReminderEditorSheet(state: ReminderEditorState, onChange: (ReminderDraft) ->
                 EditorField(draft.description, "Description / optional", { onChange(draft.copy(description = it)) }, enabled = !state.busy, multiline = true)
                 AlertFields(draft.alert, { onChange(draft.copy(alert = it)) }, !state.busy, error = state.validation["trigger"])
                 EditorToggle("Keep this enabled alert in the past", draft.allowPast, { onChange(draft.copy(allowPast = it)) }, !state.busy)
-                Text("Past alerts remain pending. They will not be moved automatically.", style = MaterialTheme.typography.bodySmall)
-                Text("Saved locally. Android notification delivery is not available yet.", style = MaterialTheme.typography.bodySmall)
+                Text("Past alerts expire without delivery. They will not be moved automatically.", style = MaterialTheme.typography.bodySmall)
+                Text("Saved locally. Delivery follows your Android notification, channel and timing permissions.", style = MaterialTheme.typography.bodySmall)
                 (state.error ?: state.validation["past"])?.let { Text(it, color = MaterialTheme.colorScheme.error,
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite; error(it) }) }
+                com.focusbuddy.ui.reminders.ReminderSettingsEntry(compact = true)
                 if (state.busy) LoadingState("Saving reminder")
                 if (state.id != null) TextButton(onDelete, enabled = !state.busy) { Text("Delete reminder", color = MaterialTheme.colorScheme.error) }
             }

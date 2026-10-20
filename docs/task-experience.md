@@ -44,7 +44,8 @@ They reject empty titles/subtasks, invalid dates/times, DST gaps, reverse end ti
 and unsupported recurrence rules. Enabled newly created, re-enabled or rescheduled
 past alerts require an explicit Keep past alerts choice; disabled historical alerts
 can be stored. Unchanged historical records need no new acknowledgment. Past alerts
-stay pending and are never silently shifted to now or another day.
+remain stored and expire without catch-up delivery; they are never silently shifted
+to now or another day. See [delivery policy](reminders.md).
 
 Exact original instants, including seconds and the second occurrence of an overlap,
 are preserved when visible date/time fields are unchanged. New ambiguous times use
@@ -53,8 +54,9 @@ Relative recurring alerts are projected from task occurrences before subtracting
 offset, preventing a weekly BYDAY rule from putting a previous-day alert on the wrong
 weekday. Device timezone changes remain observable in calendar projections.
 
-RoomTaskRepository.updateAggregate atomically updates content and replaces reminders
-and ordered subtasks. It reads current parent completion inside the transaction, so
+RoomTaskRepository.updateAggregate atomically updates content, diffs reminder IDs
+and replaces ordered subtasks. Retained reminder IDs preserve occurrence history
+and snoozes across unrelated edits. It reads parent completion inside the transaction, so
 an editor cannot undo concurrent completion or reactivate its reminders. Foreign-key
 or child-insert failures roll back the parent and all child changes. Individual
 subtask completion updates only that child and the parent update timestamp.
@@ -79,11 +81,9 @@ this port. A scheduler exception does not turn an already committed save into a
 failed submission that a user might duplicate. A real platform adapter must own its
 retry/reboot reconciliation policy.
 
-Android alarm/notification delivery remains unavailable: the application explicitly
-installs UnavailableReminderScheduler and the UI says alerts are saved locally.
-There are no OS alarms to cancel in this version, and no new notification permissions
-or misleading delivery claims. Implementing Android scheduling, permissions, reboot
-recovery and durable platform retries is the recommended next phase.
+The application now installs AndroidReminderScheduler with durable occurrence state,
+permissions and recovery. Schema 4 adds its ledger and native alarm journal. See
+[reminder implementation and verification limits](reminders.md).
 
 ## Verification
 

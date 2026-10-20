@@ -19,7 +19,7 @@ import java.io.File
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = com.focusbuddy.TestApplication::class)
 class PreferencesRepositoryTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val file = File(context.filesDir, "settings-${UUID.randomUUID()}.preferences_pb")

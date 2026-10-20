@@ -9,11 +9,12 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [TaskEntity::class, ReminderEntity::class, CategoryEntity::class, SubtaskEntity::class, FocusSessionEntity::class],
-    version = 3, exportSchema = true,
+    entities = [TaskEntity::class, ReminderEntity::class, CategoryEntity::class, SubtaskEntity::class, FocusSessionEntity::class, OccurrenceEntity::class, AlarmJournalEntity::class],
+    version = 4, exportSchema = true,
 )
 @TypeConverters(DatabaseConverters::class)
 abstract class FocusBuddyDatabase : RoomDatabase() {
+    abstract fun occurrences(): OccurrenceDao
     abstract fun tasks(): TaskDao
     abstract fun reminders(): ReminderDao
     abstract fun subtasks(): SubtaskDao
@@ -37,10 +38,23 @@ abstract class FocusBuddyDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""CREATE TABLE IF NOT EXISTS reminder_occurrences (`key` TEXT NOT NULL, reminderId TEXT NOT NULL,
+                    baseTrigger INTEGER NOT NULL, triggerAt INTEGER NOT NULL, kind TEXT NOT NULL, fingerprint TEXT NOT NULL,
+                    status TEXT NOT NULL, alarmMode TEXT, sourceKey TEXT, PRIMARY KEY(`key`),
+                    FOREIGN KEY(reminderId) REFERENCES reminders(id) ON UPDATE NO ACTION ON DELETE CASCADE)""")
+                db.execSQL("CREATE INDEX index_reminder_occurrences_reminderId ON reminder_occurrences(reminderId)")
+                db.execSQL("CREATE INDEX index_reminder_occurrences_triggerAt ON reminder_occurrences(triggerAt)")
+                db.execSQL("CREATE INDEX index_reminder_occurrences_status_triggerAt ON reminder_occurrences(status,triggerAt)")
+                db.execSQL("CREATE TABLE IF NOT EXISTS alarm_journal (`key` TEXT NOT NULL, triggerAt INTEGER NOT NULL, fingerprint TEXT NOT NULL, mode TEXT NOT NULL, generation TEXT NOT NULL DEFAULT '', PRIMARY KEY(`key`))")
+            }
+        }
+
         fun create(context: Context, name: String = "focusbuddy.db"): FocusBuddyDatabase =
             Room.databaseBuilder(context.applicationContext, FocusBuddyDatabase::class.java, name)
                 .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build()
     }
 }
