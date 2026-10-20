@@ -24,6 +24,19 @@ class TodayViewModel(
     private val reminders: ReminderRepository,
     private val clock: Clock = Clock.systemUTC(),
 ) : ViewModel() {
+    private val moments = MutableSharedFlow<com.focusbuddy.domain.mascot.MascotMoment>(extraBufferCapacity = 1)
+    val mascotMoments = moments.asSharedFlow()
+    private suspend fun celebrateCompletion() {
+        // Read committed repository state; zero-task days never count as a completed day.
+        val date = selectedDates.value
+        val dashboard = observeDashboard(flowOf(date)).first()
+        moments.emit(com.focusbuddy.domain.mascot.completionMoment(dashboard.completed, dashboard.total, date == dashboard.today))
+    }
+    private suspend fun tryCelebrate() {
+        try { celebrateCompletion() }
+        catch (e: CancellationException) { throw e }
+        catch (_: Exception) { /* Feedback failure must not turn a committed completion into an error. */ }
+    }
     private val retry = MutableStateFlow(0)
     private val pending = MutableStateFlow<Set<String>>(emptySet())
     private val actionError = MutableStateFlow<String?>(null)
@@ -51,7 +64,10 @@ class TodayViewModel(
         if (id in pending.value) return
         pending.update { it + id }
         viewModelScope.launch {
-            try { tasks.setCompleted(UUID.fromString(id), completed) }
+            try {
+                tasks.setCompleted(UUID.fromString(id), completed)
+                if (completed) tryCelebrate()
+            }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { actionError.value = "Your task couldn't be updated. Please try again." }
             finally { pending.update { it - id } }
@@ -154,7 +170,10 @@ class TodayViewModel(
     }
     fun completeDetails() {
         val details = taskDetailsState.value?.details ?: return
-        detailMutation { tasks.setCompleted(details.task.id, !details.task.completed) }
+        detailMutation {
+            tasks.setCompleted(details.task.id, !details.task.completed)
+            if (!details.task.completed) tryCelebrate()
+        }
     }
     fun toggleSubtask(id: UUID, completed: Boolean) {
         val parent = detailId.value ?: return

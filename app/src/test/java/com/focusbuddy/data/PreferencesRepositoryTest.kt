@@ -41,9 +41,26 @@ class PreferencesRepositoryTest {
         assertEquals(MascotSettings(), newRepository().settings.first())
     }
 
+    @Test fun studioSavePreservesConcurrentWeekStartAndLegacyPersonalitiesAreMapped() = runTest {
+        val store = PreferenceDataStoreFactory.create(scope = scope, produceFile = { file })
+        val repository = DataStorePreferencesRepository(store)
+        store.updateData { preferences -> preferences.toMutablePreferences().apply {
+            this[androidx.datastore.preferences.core.stringPreferencesKey("personality")] = "Encouraging"
+        } }
+        assertEquals(MascotPersonality.Friendly, repository.settings.first().personality)
+        store.updateData { preferences -> preferences.toMutablePreferences().apply {
+            this[androidx.datastore.preferences.core.stringPreferencesKey("personality")] = "Quiet"
+        } }
+        assertEquals(MascotPersonality.Focused, repository.settings.first().personality)
+        repository.setWeekStart(java.time.DayOfWeek.MONDAY)
+        repository.setMascotSettings(MascotSettings(selectedMascot = "sprout", personality = MascotPersonality.Playful))
+        assertEquals(java.time.DayOfWeek.MONDAY, repository.settings.first().weekStart)
+        assertEquals("sprout", repository.settings.first().selectedMascot)
+    }
+
     @Test fun settingsAndThemeSurviveStoreRecreation() = runTest {
         val repository = newRepository()
-        val settings = MascotSettings(selectedMascot = "bunny", personality = MascotPersonality.Encouraging,
+        val settings = MascotSettings(selectedMascot = "owl", personality = MascotPersonality.Friendly,
             supportedColors = setOf(0xFF112233, 0xFF445566), selectedColor = 0xFF445566,
             theme = ThemeMode.Dark, animationsEnabled = false, soundEnabled = true, showMascot = false)
         repository.setSettings(settings)

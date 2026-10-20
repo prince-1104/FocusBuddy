@@ -34,7 +34,7 @@ class AppViewModelTest {
         repository.state.value = MascotSettings(theme = ThemeMode.Dark)
         val model = viewModel(repository)
         runCurrent()
-        assertEquals(AppUiState(theme = ThemeMode.Dark, preferencesLoaded = true), model.uiState.value)
+        assertEquals(AppUiState(mascot = MascotSettings(theme = ThemeMode.Dark), theme = ThemeMode.Dark, preferencesLoaded = true), model.uiState.value)
         model.setTheme(ThemeMode.Light)
         runCurrent()
         assertEquals(ThemeMode.Light, model.uiState.value.theme)

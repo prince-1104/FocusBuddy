@@ -57,6 +57,15 @@ class ReminderEngineTest {
         assertEquals(1, notifications.shown.size)
         assertEquals("Delivered", db.occurrences().get(row.key)!!.status)
     }
+    @Test fun notificationOccurrenceLookupAlwaysResolvesItsOwnReminder() = runTest {
+        val first = alert(); val second = alert(); engine.reconcile()
+        val source = com.focusbuddy.data.reminders.RoomOccurrenceRepository(db)
+        assertEquals(first.id, source.observe(row(first.id).key).first().reminder!!.id)
+        assertEquals(second.id, source.observe(row(second.id).key).first().reminder!!.id)
+        val key = row(first.id).key
+        reminders.delete(first.id)
+        assertNull(source.observe(key).first().reminder)
+    }
     @Test fun editCancelsObsoleteIdentityAndOldBroadcastCannotDeliver() = runTest {
         val alert = alert(); engine.reconcile()
         val old = row(alert.id)

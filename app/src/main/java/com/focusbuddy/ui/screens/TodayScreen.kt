@@ -17,6 +17,7 @@ import com.focusbuddy.ui.today.TodayUiState
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import com.focusbuddy.domain.mascot.*
 
 data class TodayActions(
     val selectDate: (LocalDate) -> Unit,
@@ -31,7 +32,7 @@ data class TodayActions(
 )
 
 @Composable
-fun TodayScreen(state: TodayUiState, actions: TodayActions) {
+fun TodayScreen(state: TodayUiState, actions: TodayActions, moment: MascotMoment = MascotMoment.Resting, reactionKey: Long = 0) {
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(state.actionError) {
         state.actionError?.let { snackbar.showSnackbar(it); actions.dismissError() }
@@ -50,7 +51,7 @@ fun TodayScreen(state: TodayUiState, actions: TodayActions) {
             LazyColumn(Modifier.widthIn(max = 760.dp).fillMaxWidth(),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 112.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                item("header") { TodayHeader(state, actions.goToday) }
+                item("header") { TodayHeader(state, actions.goToday, moment, reactionKey) }
                 item("dates") {
                     HorizontalDateSelector(state.dateChoices, state.selectedDate, actions.selectDate,
                         counts = counts, animationsEnabled = state.animationsEnabled)
@@ -105,7 +106,9 @@ fun TodayScreen(state: TodayUiState, actions: TodayActions) {
 }
 
 @Composable
-private fun TodayHeader(state: TodayUiState, onToday: () -> Unit) {
+private fun TodayHeader(state: TodayUiState, onToday: () -> Unit, moment: MascotMoment, reactionKey: Long) {
+    val settings = LocalMascotSettings.current
+    val visualMoment = if (moment != MascotMoment.Resting) moment else if (state.reminders.isNotEmpty()) MascotMoment.UpcomingReminder else MascotMoment.Resting
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -117,10 +120,10 @@ private fun TodayHeader(state: TodayUiState, onToday: () -> Unit) {
                 Greeting.Evening -> "A little evening clarity."
                 Greeting.SelectedDay -> "Make room for your day."
             }, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.semantics { heading() })
-            Text("One small step at a time.", style = MaterialTheme.typography.bodyMedium,
+            Text(mascotMessage(settings.personality, visualMoment), style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             TextButton(onClick = onToday) { Text("Back to today") }
         }
-        if (state.showMascot) MascotArtwork(Modifier.size(72.dp), "Your lavender companion")
+        if (state.showMascot) MascotArtwork(Modifier.size(88.dp), "Your companion", settings, visualMoment, reactionKey)
     }
 }

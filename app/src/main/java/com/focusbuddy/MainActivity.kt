@@ -20,6 +20,11 @@ import com.focusbuddy.ui.theme.FocusBuddyTheme
 import com.focusbuddy.ui.today.TodayViewModel
 
 class MainActivity : ComponentActivity() {
+    private val mascotViewModel: com.focusbuddy.ui.mascot.MascotStudioViewModel by viewModels {
+        viewModelFactory { initializer {
+            com.focusbuddy.ui.mascot.MascotStudioViewModel((application as FocusBuddyApplication).container.preferences, createSavedStateHandle())
+        } }
+    }
     private val appViewModel: AppViewModel by viewModels {
         viewModelFactory {
             initializer { AppViewModel(createSavedStateHandle(), (application as FocusBuddyApplication).container.preferences) }
@@ -55,7 +60,7 @@ class MainActivity : ComponentActivity() {
                     else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
                 enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
             }
-            FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel, todayViewModel, exploreViewModel) }
+            FocusBuddyTheme(theme) { FocusBuddyApp(appViewModel, todayViewModel, exploreViewModel, mascotViewModel) }
         }
     }
 

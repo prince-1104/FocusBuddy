@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.*
 import java.time.*
 import java.time.format.*
 import java.util.UUID
+import com.focusbuddy.domain.mascot.*
 
 data class ReminderPresentation(val reminder: Reminder?, val task: Task?, val at: Instant?, val status: String, val error: String? = null)
 
@@ -36,6 +37,8 @@ class ReminderPresentationViewModel(private val source: com.focusbuddy.domain.re
     private val key = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow(false)
     val message = MutableStateFlow<String?>(null)
+    private val successes = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val completionFeedback = successes.asSharedFlow()
     val state = key.flatMapLatest { id ->
         if (id == null) flowOf(ReminderPresentation(null, null, null, "Unavailable")) else
             source.observe(id).map { ReminderPresentation(it.reminder, it.task, it.at, it.status) }
@@ -46,7 +49,11 @@ class ReminderPresentationViewModel(private val source: com.focusbuddy.domain.re
         val next = scheduler.scheduleSnoozedOccurrence(key.value ?: return@mutate, minutes)
         message.value = if (next == null) "This alert is no longer active or has expired." else "Snoozed for $minutes minutes."
     }
-    fun complete() = mutate { message.value = if (scheduler.completeOccurrence(key.value ?: return@mutate)) "Completion saved." else "This alert is no longer active or has expired." }
+    fun complete() = mutate {
+        val done = scheduler.completeOccurrence(key.value ?: return@mutate)
+        message.value = if (done) "Completion saved." else "This alert is no longer active or has expired."
+        if (done) successes.emit(Unit)
+    }
     private fun mutate(operation: suspend () -> Unit) {
         if (busy.value) return
         busy.value = true; message.value = null
@@ -71,10 +78,22 @@ class ReminderActivity : ComponentActivity() {
             val state by model.state.collectAsStateWithLifecycle()
             val busy by model.busy.collectAsStateWithLifecycle()
             val message by model.message.collectAsStateWithLifecycle()
+            val settings = LocalMascotSettings.current
+            val latestSettings by rememberUpdatedState(settings)
+            val sound = com.focusbuddy.ui.mascot.rememberCompanionSound()
+            LaunchedEffect(model) {
+                lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    model.completionFeedback.collect { if (latestSettings.showMascot && latestSettings.soundEnabled) sound() }
+                }
+            }
             var minutes by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(10) }
             Surface { Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                if (LocalReminderMascot.current) MascotArtwork(Modifier.size(112.dp), "Your FocusBuddy companion")
+                val moment = if (state.status == "Completed" || state.task?.completed == true) MascotMoment.TaskCompleted else MascotMoment.UpcomingReminder
+                if (LocalReminderMascot.current) {
+                    MascotArtwork(Modifier.size(140.dp), "Your reminder companion", settings, moment, animateEntrance = true)
+                    Text(mascotMessage(settings.personality, moment), style = MaterialTheme.typography.bodyLarge)
+                }
                 Text("A moment for your day", style = MaterialTheme.typography.headlineMedium)
                 when {
                     state.status == "Loading" -> LoadingState("Opening reminder")

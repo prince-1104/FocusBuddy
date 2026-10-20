@@ -6,6 +6,12 @@ import com.focusbuddy.ui.screens.TodayActions
 import com.focusbuddy.ui.screens.TodayScreen
 import com.focusbuddy.ui.components.ConfirmationDialog
 import java.time.LocalDate
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import com.focusbuddy.domain.mascot.MascotMoment
 
 @Composable
 fun TodayRoute(viewModel: TodayViewModel, onSelectDate: (LocalDate) -> Unit, onToday: () -> Unit, onExplore: () -> Unit = {}) {
@@ -14,7 +20,22 @@ fun TodayRoute(viewModel: TodayViewModel, onSelectDate: (LocalDate) -> Unit, onT
         TodayActions(onSelectDate, onToday, viewModel::createTask, viewModel::openTask,
             viewModel::completeTask, viewModel::retry, viewModel::dismissActionError, onExplore, viewModel::createReminder, viewModel::editReminder, viewModel::openReminderLibrary)
     }
-    TodayScreen(state, actions)
+    val settings = com.focusbuddy.ui.components.LocalMascotSettings.current
+    val latestSettings by rememberUpdatedState(settings)
+    val sound = com.focusbuddy.ui.mascot.rememberCompanionSound()
+    val owner = LocalLifecycleOwner.current
+    var moment by remember { mutableStateOf(MascotMoment.Resting) }
+    var reaction by remember { mutableLongStateOf(0) }
+    LaunchedEffect(viewModel, owner) {
+        owner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.mascotMoments.collectLatest {
+                moment = it; reaction++
+                if (latestSettings.showMascot && latestSettings.soundEnabled) sound()
+                try { delay(2400) } finally { moment = MascotMoment.Resting }
+            }
+        }
+    }
+    TodayScreen(state, actions, moment, reaction)
     TaskEditorHost(viewModel, state.editor, state.categories)
 }
 

@@ -87,12 +87,12 @@ data class FocusSession(
     }
 }
 
-enum class MascotPersonality { Calm, Encouraging, Quiet }
+enum class MascotPersonality { Calm, Friendly, Playful, Focused }
 
 data class MascotSettings(
     val selectedMascot: String = "bunny",
     val personality: MascotPersonality = MascotPersonality.Calm,
-    val supportedColors: Set<Long> = setOf(0xFFD9C8FAL),
+    val supportedColors: Set<Long> = setOf(0xFFD9C8FAL, 0xFFB8C9F0L, 0xFFACD8C5L, 0xFFF3BDA8L),
     val selectedColor: Long = 0xFFD9C8FAL,
     val theme: ThemeMode = ThemeMode.System,
     val animationsEnabled: Boolean = true,

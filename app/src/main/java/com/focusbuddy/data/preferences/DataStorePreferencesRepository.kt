@@ -34,10 +34,15 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
         val colors = preferences[Keys.colors]?.mapNotNull { it.toLongOrNull() }
             ?.filter { it in 0..0xFFFFFFFFL }?.toSet()?.takeIf { it.isNotEmpty() } ?: defaults.supportedColors
         MascotSettings(
-            selectedMascot = preferences[Keys.mascot]?.takeIf { it.isNotBlank() } ?: defaults.selectedMascot,
-            personality = MascotPersonality.entries.firstOrNull { it.name == preferences[Keys.personality] } ?: defaults.personality,
+            selectedMascot = com.focusbuddy.domain.mascot.MascotVariant.from(preferences[Keys.mascot].orEmpty()).id,
+            personality = when (preferences[Keys.personality]) {
+                "Encouraging" -> MascotPersonality.Friendly
+                "Quiet" -> MascotPersonality.Focused
+                else -> MascotPersonality.entries.firstOrNull { it.name == preferences[Keys.personality] } ?: defaults.personality
+            },
             supportedColors = colors,
-            selectedColor = preferences[Keys.selectedColor]?.takeIf { it in colors } ?: colors.min(),
+            selectedColor = preferences[Keys.selectedColor]?.takeIf { it in colors }
+                ?: defaults.selectedColor.takeIf { it in colors } ?: colors.min(),
             theme = ThemeMode.entries.firstOrNull { it.name == preferences[Keys.theme] } ?: defaults.theme,
             animationsEnabled = preferences[Keys.animations] ?: defaults.animationsEnabled,
             soundEnabled = preferences[Keys.sound] ?: defaults.soundEnabled,
@@ -52,8 +57,14 @@ class DataStorePreferencesRepository(private val store: DataStore<Preferences>) 
     override suspend fun setAnimationsEnabled(enabled: Boolean) { store.edit { it[Keys.animations] = enabled } }
 
     override suspend fun setSettings(settings: MascotSettings) {
+        writeSettings(settings, includeWeekStart = true)
+    }
+    override suspend fun setMascotSettings(settings: MascotSettings) {
+        writeSettings(settings, includeWeekStart = false)
+    }
+    private suspend fun writeSettings(settings: MascotSettings, includeWeekStart: Boolean) {
         store.edit {
-            it[Keys.weekStart] = settings.weekStart?.value ?: 0
+            if (includeWeekStart) it[Keys.weekStart] = settings.weekStart?.value ?: 0
             it[Keys.theme] = settings.theme.name
             it[Keys.mascot] = settings.selectedMascot
             it[Keys.personality] = settings.personality.name

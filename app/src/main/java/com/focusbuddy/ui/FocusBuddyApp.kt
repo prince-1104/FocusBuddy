@@ -19,19 +19,23 @@ import com.focusbuddy.ui.today.TodayRoute
 import com.focusbuddy.ui.today.TodayViewModel
 
 @Composable
-fun FocusBuddyApp(appViewModel: AppViewModel, todayViewModel: TodayViewModel, exploreViewModel: com.focusbuddy.ui.explore.ExploreViewModel) {
+fun FocusBuddyApp(appViewModel: AppViewModel, todayViewModel: TodayViewModel, exploreViewModel: com.focusbuddy.ui.explore.ExploreViewModel,
+    mascotViewModel: com.focusbuddy.ui.mascot.MascotStudioViewModel) {
     val selectedName by appViewModel.destination.collectAsStateWithLifecycle()
     val uiState by appViewModel.uiState.collectAsStateWithLifecycle()
     val destination = Destination.entries.firstOrNull { it.name == selectedName } ?: Destination.Today
     BackHandler(enabled = destination != Destination.Today) { appViewModel.select(Destination.Today) }
+    CompositionLocalProvider(com.focusbuddy.ui.components.LocalMascotSettings provides uiState.mascot) {
     Column(Modifier.statusBarsPadding()) {
     com.focusbuddy.ui.reminders.ReminderSettingsEntry()
     Box(Modifier.weight(1f)) { FocusBuddyContent(destination, appViewModel::select, uiState.theme, appViewModel::setTheme,
         todayContent = { TodayRoute(todayViewModel, appViewModel::selectDate, appViewModel::selectToday, { appViewModel.select(Destination.Explore) }) },
         exploreContent = { com.focusbuddy.ui.explore.ExploreRoute(exploreViewModel, todayViewModel, appViewModel::selectDate, appViewModel::selectToday) },
+        mascotContent = { com.focusbuddy.ui.mascot.MascotStudioRoute(mascotViewModel) },
         showMascot = uiState.showMascot, onMascotVisibilityChange = appViewModel::setMascotVisible,
         animationsEnabled = uiState.animationsEnabled, onAnimationsChange = appViewModel::setAnimationsEnabled,
         settingsError = uiState.preferencesError, onRetryPreferences = appViewModel::retryFailedPreference) }
+    }
     }
 }
 
@@ -44,6 +48,7 @@ fun FocusBuddyContent(
     onThemeChange: (ThemeMode) -> Unit,
     todayContent: @Composable () -> Unit,
     exploreContent: @Composable () -> Unit,
+    mascotContent: @Composable () -> Unit = { MascotScreen() },
     showMascot: Boolean = true,
     onMascotVisibilityChange: (Boolean) -> Unit = {},
     animationsEnabled: Boolean = true,
@@ -98,7 +103,7 @@ fun FocusBuddyContent(
                             Destination.Today -> todayContent()
                             Destination.Explore -> exploreContent()
                             Destination.Focus -> FocusScreen()
-                            Destination.Mascot -> MascotScreen()
+                            Destination.Mascot -> mascotContent()
                             Destination.Profile -> ProfileScreen(theme, onThemeChange, showMascot, onMascotVisibilityChange,
                                 animationsEnabled, onAnimationsChange)
                         }

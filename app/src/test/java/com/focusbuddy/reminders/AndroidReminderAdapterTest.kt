@@ -31,6 +31,8 @@ class AndroidReminderAdapterTest {
         assertNotEquals(actionPendingIntent(context, first, "COMPLETE"), actionPendingIntent(context, first, "DISMISS"))
         assertTrue(alarmPendingIntent(context, first)!!.isImmutable)
         assertTrue(openPendingIntent(context, first).isImmutable)
+        assertEquals("focusbuddy://occurrence/$first", Shadows.shadowOf(openPendingIntent(context, first)).savedIntent.data.toString())
+        assertEquals("focusbuddy://occurrence/$next", Shadows.shadowOf(openPendingIntent(context, next)).savedIntent.data.toString())
     }
     @Test fun frameworkAdapterUsesFallbackWhenExactPermissionIsAbsent() {
         ShadowAlarmManager.setCanScheduleExactAlarms(false)

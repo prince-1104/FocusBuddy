@@ -59,6 +59,8 @@ interface PreferencesRepository {
     suspend fun setTheme(mode: ThemeMode)
     /** Explicit replacement of all settings. */
     suspend fun setSettings(settings: MascotSettings)
+    /** Save Studio fields while preserving the latest independent calendar preference. */
+    suspend fun setMascotSettings(settings: MascotSettings) { setSettings(settings) }
     suspend fun setMascotVisible(visible: Boolean)
     suspend fun setAnimationsEnabled(enabled: Boolean)
 }

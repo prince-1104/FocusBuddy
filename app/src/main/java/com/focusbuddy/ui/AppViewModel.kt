@@ -24,6 +24,7 @@ import java.time.ZoneId
 enum class Destination { Today, Explore, Focus, Mascot, Profile }
 
 data class AppUiState(
+    val mascot: com.focusbuddy.domain.model.MascotSettings = com.focusbuddy.domain.model.MascotSettings(),
     val theme: ThemeMode = ThemeMode.System,
     val preferencesLoaded: Boolean = false,
     val preferencesError: String? = null,
@@ -60,7 +61,7 @@ class AppViewModel(
                 if (failure !is IOException) throw failure
                 mutableUiState.update { it.copy(preferencesError = "Your preferences couldn't be loaded. Please try again.") }
             }.collect { settings ->
-                mutableUiState.update { it.copy(theme = settings.theme, preferencesLoaded = true, preferencesError = null,
+                mutableUiState.update { it.copy(mascot = settings, theme = settings.theme, preferencesLoaded = true, preferencesError = null,
                     showMascot = settings.showMascot, animationsEnabled = settings.animationsEnabled) }
             }
         }

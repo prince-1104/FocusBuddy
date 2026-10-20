@@ -81,6 +81,24 @@ class TodayViewModelTest {
         assertFalse(tasks.get(task.id)!!.reminders.single().enabled)
     }
 
+    @Test fun mascotReactionsFollowSuccessfulWritesAndDistinguishTheLastTask() = runTest(dispatcher) {
+        val first = tasks.create(Task(title = "First step", scheduledDate = date))
+        val last = tasks.create(Task(title = "Last step", scheduledDate = date))
+        val model = model()
+        val reactions = mutableListOf<com.focusbuddy.domain.mascot.MascotMoment>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { model.mascotMoments.collect { reactions += it } }
+        model.uiState.first { !it.isLoading && it.total == 2 }
+        model.completeTask(first.id.toString(), true)
+        model.uiState.first { it.completed == 1 && it.pendingTaskIds.isEmpty() }
+        assertEquals(listOf(com.focusbuddy.domain.mascot.MascotMoment.TaskCompleted), reactions)
+        model.completeTask(last.id.toString(), true)
+        model.uiState.first { it.completed == 2 && it.pendingTaskIds.isEmpty() }
+        assertEquals(com.focusbuddy.domain.mascot.MascotMoment.DayCompleted, reactions.last())
+        model.completeTask(last.id.toString(), false)
+        model.uiState.first { it.completed == 1 && it.pendingTaskIds.isEmpty() }
+        assertEquals(2, reactions.size)
+    }
+
     @Test fun overdueCarryoverDoesNotInflateSelectedDayProgress() = runTest(dispatcher) {
         tasks.create(Task(title = "Yesterday", scheduledDate = date.minusDays(1)))
         tasks.create(Task(title = "Today", scheduledDate = date, completed = true))
