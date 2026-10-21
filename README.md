@@ -29,7 +29,7 @@ installation from that file manager when Android asks. The debug build is suitab
 for personal evaluation; it is debuggable and is not a production-signed release.
 
 Package/namespace: **com.focusbuddy**. Display name: **FocusBuddy**.
-Version: **0.1.0**, version code **1** in `app/build.gradle.kts`.
+Version: **0.1.1**, version code **2** in `app/build.gradle.kts`.
 Debug and release share the package, so they cannot coexist. An update needs the
 same signing certificate. Do not uninstall an existing installation just to fix a
 signature mismatch: uninstalling removes local data, and v1 has no export/backup.

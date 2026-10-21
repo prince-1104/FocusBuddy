@@ -2,12 +2,17 @@ package com.focusbuddy.ui.today
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.dp
 import com.focusbuddy.domain.model.*
 import com.focusbuddy.domain.usecase.EditorValidation
@@ -48,10 +53,26 @@ internal fun TimeField(value: String, label: String, onChange: (String) -> Unit,
     if (choosing) {
         val initial = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.of(9, 0))
         val picker = rememberTimePickerState(initial.hour, initial.minute, is24Hour = format == TimeFormat.Hour24)
-        AlertDialog(onDismissRequest = { choosing = false }, confirmButton = { TextButton({
-            onChange(LocalTime.of(picker.hour, picker.minute).format(DateTimeFormatter.ofPattern("HH:mm"))); choosing = false
-        }) { Text("Use time") } }, dismissButton = { TextButton({ choosing = false }) { Text("Cancel") } },
-            text = { TimeInput(picker) }, title = { Text(label) })
+        var clockMode by rememberSaveable { mutableStateOf(true) }
+        Dialog(onDismissRequest = { choosing = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Surface(Modifier.padding(12.dp).widthIn(max = 400.dp).fillMaxWidth(), shape = MaterialTheme.shapes.extraLarge,
+                tonalElevation = 6.dp) {
+                Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(label, style = MaterialTheme.typography.titleLarge)
+                    if (clockMode) Box(Modifier.testTag("time-dial")) { TimePicker(picker, layoutType = TimePickerLayoutType.Vertical) }
+                    else Box(Modifier.testTag("time-keyboard")) { TimeInput(picker) }
+                    TextButton({ clockMode = !clockMode }) { Text(if (clockMode) "Use keyboard" else "Use clock") }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton({ choosing = false }) { Text("Cancel") }
+                        TextButton({
+                            onChange(LocalTime.of(picker.hour, picker.minute).format(DateTimeFormatter.ofPattern("HH:mm")))
+                            choosing = false
+                        }) { Text("Use time") }
+                    }
+                }
+            }
+        }
     }
 }
 

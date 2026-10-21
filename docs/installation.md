@@ -190,3 +190,49 @@ Local command logs: ignored `.tooling/packaging-verification.log` and
 `app/build/reports/` and `app/build/test-results/`. The APK is an ignored local
 build output, not an attachment in the Git repository. The manual checklist above
 and real permission/background notification checks remain pending on a device.
+
+## Updated build — 21 October 2026 (0.1.1)
+
+The clock picker and reminder recovery fixes are described in
+[reminders](reminders.md#clock-picker-and-reminder-recovery--21-october-2026).
+Use Choose start time/end time/alert time to open the adjustable dial; Use keyboard
+switches to numeric entry. The selected hour/minute is committed only with Use time.
+
+Final command (all tasks in `:app`): `assembleDebug assembleRelease
+assembleDebugAndroidTest testDebugUnitTest lintDebug --max-workers=2`.
+**BUILD SUCCESSFUL**, 3m 21s. All 167 host tests across 25 suites passed, with zero
+failures, errors or skips. This includes six clock/setup Compose UI tests and two
+receiver integration tests. Lint: zero errors, 27 non-blocking warnings (the extra
+warning is an optional URI KTX style suggestion). Debug, unsigned release and
+instrumentation APKs built successfully. No assertions were removed or weakened.
+
+The initial new retry regression failed before the engine correction (an Error
+registration was expired just after its due time). Picker test selectors were
+corrected for 12-hour accessibility labels, and the receiver integration harness
+explicitly registers the production receiver because the generated host manifest
+omits app receivers. Expected-time, persistence and duplicate-prevention assertions
+remain intact. The final packaged manifest separately confirms the alarm/action
+receivers are private and the recovery receiver is declared.
+
+Package `com.focusbuddy`; versionName **0.1.1**, versionCode **2**. Debug APK:
+`D:\Hopper\projects\FocusBuddy\app\build\outputs\apk\debug\app-debug.apk`
+(12,852,626 bytes). SHA-256:
+`359DF009101A94F9792DBD598A403AD8111F4E1A3E20B43E0528261BB63FBAFD`.
+APK Signature Scheme v2 verifies with the same Android Debug certificate documented
+above. Install as an update over an APK with that certificate to preserve local
+data. The release output remains unsigned; no release signing credentials were
+created. The package still has no INTERNET permission or runtime key requirement.
+
+ADB listed no connected devices. The user's Realme P2 Pro is unavailable for
+inspection, so the updated APK was **not installed or verified on an emulator or
+physical device**. Notifications and precise access are reportedly already enabled
+and a future alert was added; the exact cause on that phone remains unconfirmed.
+The host tests verify the retry and receiver paths but cannot validate OEM power
+management or lock-screen delivery. After updating, reopen Profile > Notification
+delivery, check any blocked reminder channels, and use Retry schedule recovery.
+If needed, review the phone's app battery/background/auto-launch controls, then
+create a new alert several minutes ahead and test with the screen off. Do not
+uninstall or clear data for this check.
+
+Local final build log: `.tooling/clock-reminder-final.log` (ignored). Detailed test
+and lint reports remain under `app/build/reports/` and `app/build/test-results/`.

@@ -27,6 +27,9 @@ class TodayViewModel(
 ) : ViewModel() {
     private val moments = MutableSharedFlow<com.focusbuddy.domain.mascot.MascotMoment>(extraBufferCapacity = 1)
     val mascotMoments = moments.asSharedFlow()
+    private val savedAlertNotice = MutableStateFlow(false)
+    val reminderSaved = savedAlertNotice.asStateFlow()
+    fun dismissReminderSaved() { savedAlertNotice.value = false }
     private suspend fun celebrateCompletion() {
         // Read committed repository state; zero-task days never count as a completed day.
         val date = selectedDates.value
@@ -134,6 +137,7 @@ class TodayViewModel(
                 val saved = saveTask(current.draft, current.taskId, zone())
                 editor.value = null
                 onSelectDate(saved.scheduledDate)
+                savedAlertNotice.value = current.draft.alerts.any { it.enabled } && !current.taskCompleted
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (invalid: DraftValidationException) { editor.update { it?.copy(busy = false, validation = mapOf(invalid.field to invalid.message)) } }
             catch (_: Exception) { editor.update { it?.copy(busy = false, error = "Your task couldn't be saved. Please try again.") } }
@@ -259,6 +263,7 @@ class TodayViewModel(
                 if (current.id == null) repository.create(record) else repository.update(record.copy(id = current.id))
                 reminderEditor.value = null
                 onSelectDate(record.effectiveTriggerAt.atZone(zone()).toLocalDate())
+                savedAlertNotice.value = record.enabled
             } catch (e: CancellationException) { throw e }
             catch (e: DraftValidationException) { reminderEditor.update { it?.copy(busy = false, validation = mapOf(e.field to e.message)) } }
             catch (_: Exception) { reminderEditor.update { it?.copy(busy = false, error = "Your reminder couldn't be saved. Please try again.") } }
@@ -290,5 +295,6 @@ class TodayViewModel(
     fun cancelPendingEdits() {
         editorJob?.cancel(); reminderJob?.cancel()
         editor.value = null; reminderEditor.value = null; detailId.value = null; libraryOpen.value = false
+        savedAlertNotice.value = false
     }
 }

@@ -30,12 +30,16 @@ import kotlinx.coroutines.launch
 class ReminderPermissionActivity : ComponentActivity() {
     private var access by mutableStateOf(SchedulingAccess(false, false))
     private var message by mutableStateOf<String?>(null)
+    private var blockedChannels by mutableStateOf<List<String>>(emptyList())
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         refresh()
         if (!it) message = "Notifications are off. You can enable them in Android settings whenever you choose."
     }
     private fun refresh() {
         access = AndroidAlarmGateway(this).access()
+        blockedChannels = getSystemService(android.app.NotificationManager::class.java).notificationChannels
+            .filter { it.id.startsWith("reminders_") && it.importance == android.app.NotificationManager.IMPORTANCE_NONE }
+            .map { it.name.toString() }
         (application as FocusBuddyApplication).container.reminderScheduler.requestReconciliation()
     }
     override fun onResume() { super.onResume(); refresh() }
@@ -51,6 +55,7 @@ class ReminderPermissionActivity : ComponentActivity() {
                 BuddyCard {
                     Text(if (access.notifications) "Notifications enabled" else "Notifications are off", style = MaterialTheme.typography.titleMedium)
                     Text("Allow notifications to see reminders and their Complete, Snooze, and Open actions. Sound and vibration also follow your Android channel choices.")
+                    if (blockedChannels.isNotEmpty()) Text("Blocked reminder channels: ${blockedChannels.joinToString()}. Enable the channels you use in Android settings.", color = MaterialTheme.colorScheme.error)
                     if (!access.notifications && Build.VERSION.SDK_INT >= 33) PrimaryButton("Allow notifications", { permission.launch(Manifest.permission.POST_NOTIFICATIONS) })
                     SecondaryButton("Notification and channel settings", {
                         launchSettings(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName))
@@ -67,6 +72,10 @@ class ReminderPermissionActivity : ComponentActivity() {
                 if (health.blocked > 0) Text("${health.blocked} pending alerts are waiting for notification permission.")
                 SecondaryButton("Retry schedule recovery", { lifecycleScope.launch { (application as FocusBuddyApplication).container.reminderScheduler.rebuild() } })
                 Text("Battery restrictions, device vendor policies, Doze limits, force-stop and denied permissions can delay or prevent delivery. Exact timing is not guaranteed on every device.")
+                SecondaryButton("Review app battery and background settings", {
+                    launchSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                })
+                Text("In app info, review Battery usage/background activity if reminders stop when the screen is off. Some phones also have an auto-launch setting. These choices belong to Android and may vary by device.", style = MaterialTheme.typography.bodySmall)
                 Text("After a force-stop, open FocusBuddy again to recover alarms. After reboot, reminders recover after the device is unlocked. Missed alerts older than two hours expire instead of appearing as stale notifications.", style = MaterialTheme.typography.bodySmall)
                 message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 PrimaryButton("Back to FocusBuddy", { finish() }, Modifier.fillMaxWidth())
@@ -91,7 +100,22 @@ fun ReminderSettingsEntry(compact: Boolean = false) {
         onDispose { owner.lifecycle.removeObserver(observer) }
     }
     TextButton({ context.startActivity(Intent(context, ReminderPermissionActivity::class.java)) }) {
-        Text(if (compact) "Notification and timing settings" else
+        Text(if (compact) when {
+            !access.notifications -> "Notifications are off · Enable reminders"
+            !access.exact -> "Notifications on · Review delayed timing"
+            else -> "Notifications on · Precise timing allowed"
+        } else
             "Notifications ${if (access.notifications) "on" else "off"} · ${if (access.exact) "Precise timing allowed" else "Inexact timing"} / Review")
     }
+}
+
+@Composable
+fun ReminderSetupNotice(onDismiss: () -> Unit, onReview: () -> Unit, notificationsEnabled: Boolean = false) {
+    AlertDialog(onDismissRequest = onDismiss,
+        title = { Text(if (notificationsEnabled) "Reminder saved · timing may be delayed" else "Reminder saved · notifications are off") },
+        text = { Text(if (notificationsEnabled)
+            "Notifications are allowed, but precise alarm access is off. Android may delay this alert. Review Alarms & reminders access for delivery at your chosen time, and check notification channels if an alert stays silent."
+            else "Your alert is saved, but Android is blocking FocusBuddy notifications. Enable notifications before the alert time. You can also review precise timing and notification channels.") },
+        confirmButton = { TextButton(onReview) { Text(if (notificationsEnabled) "Review precise timing" else "Enable notifications") } },
+        dismissButton = { TextButton(onDismiss) { Text("Later") } })
 }

@@ -41,6 +41,17 @@ fun TodayRoute(viewModel: TodayViewModel, onSelectDate: (LocalDate) -> Unit, onT
 
 @Composable
 fun TaskEditorHost(viewModel: TodayViewModel, editorState: TaskEditorState?, categories: List<com.focusbuddy.domain.model.Category>) {
+    val reminderSaved by viewModel.reminderSaved.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    if (reminderSaved) {
+        val access = com.focusbuddy.platform.reminders.AndroidAlarmGateway(context).access()
+        if (access.notifications && access.exact) LaunchedEffect(Unit) { viewModel.dismissReminderSaved() }
+        else com.focusbuddy.ui.reminders.ReminderSetupNotice(notificationsEnabled = access.notifications,
+            onDismiss = viewModel::dismissReminderSaved, onReview = {
+            viewModel.dismissReminderSaved()
+            context.startActivity(android.content.Intent(context, com.focusbuddy.ui.reminders.ReminderPermissionActivity::class.java))
+        })
+    }
     val library by viewModel.reminderLibrary.collectAsStateWithLifecycle()
     val details by viewModel.taskDetailsState.collectAsStateWithLifecycle()
     val reminder by viewModel.reminderEditorState.collectAsStateWithLifecycle()

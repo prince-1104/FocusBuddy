@@ -247,6 +247,35 @@ class ReminderEngineTest {
         assertEquals("Exact", row(alert.id).alarmMode)
         assertEquals(1, db.occurrences().all().size)
     }
+    @Test fun temporaryRegistrationFailureCanRecoverJustAfterDueButNeverAfterTheLatenessLimit() = runTest {
+        val alert = alert(); alarms.fail = true; engine.reconcile()
+        val failed = row(alert.id)
+        assertEquals("Error", failed.alarmMode)
+        clock.now = failed.triggerAt.plusSeconds(30)
+        alarms.fail = false; engine.reconcile()
+        assertEquals("Pending", db.occurrences().get(failed.key)!!.status)
+        assertEquals("Exact", db.occurrences().get(failed.key)!!.alarmMode)
+        engine.deliver(failed.key); engine.deliver(failed.key)
+        assertEquals(1, notifications.shown.size)
+
+        val stale = alert(); alarms.fail = true; engine.reconcile()
+        val staleRow = row(stale.id)
+        clock.now = staleRow.triggerAt.plus(ReminderEngine.MAX_LATENESS).plusSeconds(1)
+        alarms.fail = false; engine.reconcile(); engine.deliver(staleRow.key)
+        assertEquals("Expired", db.occurrences().get(staleRow.key)!!.status)
+        assertEquals(1, notifications.shown.size)
+    }
+    @Test fun forcedRecoveryReinstallsAnAlarmConsumedBeforeAFailedDeliveryClaim() = runTest {
+        val alert = alert(); engine.reconcile()
+        val registered = row(alert.id)
+        clock.now = registered.triggerAt.plusSeconds(10)
+        alarms.registered.remove(registered.key) // OS consumed it; receiver failed before claiming Room.
+        assertEquals("Exact", db.occurrences().get(registered.key)!!.alarmMode)
+        engine.reconcile(force = true)
+        assertTrue(alarms.registered.containsKey(registered.key))
+        engine.deliver(registered.key); engine.deliver(registered.key)
+        assertEquals(1, notifications.shown.size)
+    }
     @Test fun titleAndSoundEditsPreserveFutureSnoozesButTimingEditsCancelThem() = runTest {
         val task = tasks.create(Task(title = "Original title", scheduledDate = LocalDate.of(2026, 10, 20)))
         val alert = alert(task); engine.reconcile(); val initial = row(alert.id)

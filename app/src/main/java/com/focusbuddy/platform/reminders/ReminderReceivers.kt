@@ -6,13 +6,23 @@ import com.focusbuddy.FocusBuddyApplication
 import kotlinx.coroutines.*
 import java.util.UUID
 
-private fun BroadcastReceiver.perform(context: Context, operation: suspend () -> Unit) {
+internal fun BroadcastReceiver.performReminderOperation(context: Context, operation: suspend () -> Unit) {
     val pending = goAsync()
     val lock = context.getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "FocusBuddy:delivery").apply { acquire(9_000) }
     (context.applicationContext as FocusBuddyApplication).container.reminderScope.launch {
+        var rebuild = false
         try { withTimeout(8_000) { operation() } }
-        catch (_: Exception) { /* Recover from Room on the persisted reconciliation job. */ }
-        finally { if (lock.isHeld) lock.release(); runCatching { AndroidReminderScheduler.enqueue(context) }; pending.finish() }
+        catch (error: Exception) {
+            rebuild = true
+            android.util.Log.e("FocusBuddyReminders", "Reminder delivery could not finish; recovery requested", error)
+        }
+        finally {
+            if (lock.isHeld) lock.release()
+            // The OS has consumed this alarm. A failed pre-claim delivery must be
+            // reinstalled instead of trusting the old registration journal.
+            runCatching { AndroidReminderScheduler.enqueue(context, force = rebuild) }
+            pending.finish()
+        }
     }
 }
 class ReminderAlarmReceiver : BroadcastReceiver() {
@@ -21,7 +31,7 @@ class ReminderAlarmReceiver : BroadcastReceiver() {
         if (intent.action != "com.focusbuddy.FIRE") return
         val key = intent.data?.takeIf { it.host == "alarm" }?.lastPathSegment ?: return
         runCatching { UUID.fromString(key) }.getOrNull() ?: return
-        perform(context) { (context.applicationContext as FocusBuddyApplication).container.reminderEngine.deliver(key) }
+        performReminderOperation(context) { (context.applicationContext as FocusBuddyApplication).container.reminderEngine.deliver(key) }
     }
 }
 class ReminderActionReceiver : BroadcastReceiver() {
@@ -32,7 +42,7 @@ class ReminderActionReceiver : BroadcastReceiver() {
         runCatching { UUID.fromString(key) }.getOrNull() ?: return
         val action = parts[1]
         if (intent.action != "com.focusbuddy.$action") return
-        perform(context) {
+        performReminderOperation(context) {
             val container = (context.applicationContext as FocusBuddyApplication).container
             when (action) {
                 "COMPLETE" -> container.reminderEngine.complete(key)

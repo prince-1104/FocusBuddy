@@ -77,6 +77,8 @@ fun TaskEditorSheet(state: TaskEditorState, categories: List<Category>, onChange
                 HorizontalDivider()
                 Text("Gentle reminders", style = MaterialTheme.typography.titleMedium)
                 Text("${draft.alerts.count { it.enabled }} enabled alerts. All-day presets use 09:00.", style = MaterialTheme.typography.bodySmall)
+                if (draft.alerts.none { it.enabled }) Text("To receive a notification, add an alert below or set a default reminder in Profile.",
+                    color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(0, 5, 10, 30).forEach { minutes ->
                         AssistChip(onClick = { if (draft.alerts.none { it.offsetMinutes == minutes }) onChange(draft.copy(alerts = draft.alerts + AlertDraft(offsetMinutes = minutes, followTaskRecurrence = true, soundEnabled = defaults.defaultAlertSound, vibrationEnabled = defaults.defaultAlertVibration))) },

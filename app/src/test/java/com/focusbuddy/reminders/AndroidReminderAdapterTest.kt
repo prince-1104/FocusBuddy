@@ -80,6 +80,16 @@ class AndroidReminderAdapterTest {
         val key = occurrenceKey(id, trigger)
         assertFalse(AndroidNotifications(context).show(ReminderDelivery(ReminderOccurrence(key, id, trigger, trigger, "Normal", "test"), "Blocked", "", null, false, false, null)))
     }
+    @Test fun blockedChannelDoesNotPostEvenWhenAppNotificationPermissionIsGranted() {
+        Shadows.shadowOf(context).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        Shadows.shadowOf(manager).setNotificationsEnabled(true)
+        manager.createNotificationChannel(NotificationChannel("reminders_s1v1", "Blocked by user", NotificationManager.IMPORTANCE_NONE))
+        val key = occurrenceKey(id, trigger)
+        assertTrue(AndroidAlarmGateway(context).access().notifications)
+        assertFalse(AndroidNotifications(context).show(ReminderDelivery(ReminderOccurrence(key, id, trigger, trigger, "Normal", "test"), "Blocked channel", "", null, true, true, null)))
+        assertNull(Shadows.shadowOf(manager).getNotification(key, 0))
+    }
     @Test fun recoveryBroadcastsEnqueueDurableForcedReconciliation() {
         val receiver = ReminderRecoveryReceiver()
         for (action in listOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED,

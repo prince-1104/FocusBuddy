@@ -82,6 +82,9 @@ class TaskExperienceViewModelTest {
         val rows = tasks.observeScheduled(date.plusDays(1), date.plusDays(1)).first()
         assertEquals(1, rows.size)
         assertEquals(1, tasks.get(rows.single().id)!!.reminders.size)
+        assertTrue(vm.reminderSaved.value)
+        vm.dismissReminderSaved()
+        assertFalse(vm.reminderSaved.value)
         val state = vm.uiState.first { !it.isLoading && it.selectedDate == date.plusDays(1) && it.total == 1 }
         assertEquals(1, state.sections.single().tasks.single().subtasksCompleted)
     }

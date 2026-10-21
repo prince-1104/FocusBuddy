@@ -48,7 +48,9 @@ class ReminderEngine(private val db: FocusBuddyDatabase, private val alarms: Ala
             val isExpired = row.triggerAt < now.minus(MAX_LATENESS)
             val obsolete = row.kind != "Snooze" && row.triggerAt > now && row.key !in planned
             if (row.status in setOf("Pending", "Delivered") && (!valid || isExpired || obsolete ||
-                (row.status == "Pending" && row.triggerAt < now && row.alarmMode !in setOf("Exact", "Inexact")))) {
+                // A previously attempted alarm may recover after a transient OS failure.
+                // Newly past/permission-blocked alerts still expire; MAX_LATENESS bounds retries.
+                (row.status == "Pending" && row.triggerAt < now && row.alarmMode !in setOf("Exact", "Inexact", "Error")))) {
                 dao.update(row.copy(status = if (valid && !obsolete) "Expired" else "Canceled", alarmMode = null))
             }
         }

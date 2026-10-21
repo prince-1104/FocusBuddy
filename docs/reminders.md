@@ -125,3 +125,54 @@ revoked exact access, channel blocking, battery saver/Doze, force-stop/relaunch,
 TalkBack/large fonts and a real manufacturer's power management. No emulator or
 physical device was connected during development; device results must be recorded
 separately before declaring delivery production-validated.
+
+## Clock picker and reminder recovery — 21 October 2026
+
+Version 0.1.1 (code 2) adds an adjustable analog clock to the shared time field,
+with hour/minute selection and a keyboard toggle. Task start/end times and custom
+reminder times use the same control, honoring 12/24-hour preferences. Cancel leaves
+the draft unchanged; picker state survives normal saved-state restoration.
+
+A deterministic regression reproduced this delivery defect: an OS registration
+failure persisted `alarmMode=Error`, but recovery just after the due time expired
+that occurrence instead of retrying it. Previously attempted, still-active Error
+rows now retry within the existing two-hour lateness bound. Newly entered past
+alerts, permission-blocked alerts and alerts beyond that bound still expire.
+Editing, completion, deletion and fingerprint checks continue to prevent obsolete
+alerts from delivering.
+
+Receiver errors/timeouts before a delivery claim now request forced recovery.
+Without it, the registration journal could still describe a consumed OS alarm as
+installed, and normal reconciliation could skip reinstalling it. Forced recovery
+reinstalls still-pending valid occurrences within the lateness bound. A failure
+after the durable delivery claim still has the documented at-most-once crash
+window. Receiver errors are logged locally under `FocusBuddyReminders` for ADB
+diagnosis; no analytics or remote reporting was added.
+
+After successfully saving enabled alerts, the editor offers contextual setup if
+notifications or precise-alarm access are unavailable. Notification permission and
+exact access are reported separately. The permission screen also lists blocked
+reminder channels and links to app info for battery/background settings. Android
+channel choices are preserved. A task time alone does not create an alert; the
+editor explicitly points to At event/custom alerts and Profile reminder defaults.
+
+The user reports a Realme P2 Pro with notifications enabled, precise timing allowed
+and a future alert added. That device-specific failure has **not** been reproduced
+on the phone: it is not connected for ADB inspection. The retry defect above is a
+confirmed code defect, not a confirmed diagnosis of that report.
+
+For this phone, check the individual reminder channels (not only the app-wide
+notification switch). In Android app info, review Battery usage/App battery
+management and Allow background activity/auto-launch where offered. Labels vary
+by realme UI version. [Official Realme notification troubleshooting](https://www.realme.com/bd/support/kw/doc/2134413)
+describes these controls. Do not clear app data or uninstall as a troubleshooting
+shortcut; that deletes local records. After changing settings, reopen FocusBuddy
+and test a new enabled alert several minutes in the future with the screen off.
+Exact access does not override manufacturer battery restrictions or channel choices.
+
+Host integration tests send alarm PendingIntents to the actual production receiver
+and inspect NotificationManager output without opening an Activity. AGP's unit-test
+manifest omits app receivers, so the host harness explicitly registers the receiver;
+the production manifest declaration is inspected separately. This is stronger than
+fake-gateway tests but is still not emulator or physical-device delivery evidence.
+See the latest verification record in [installation](installation.md).
